@@ -1,0 +1,170 @@
+.root {
+  display: grid;
+  gap: var(--space-6);
+}
+
+/* A horizontal lane of buy stages. The line along the top ties the stages into one path. */
+.lane {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-4) 0 var(--space-2);
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(8.5rem, 1fr);
+  gap: var(--space-4);
+  overflow-x: auto;
+}
+
+.stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+}
+
+/* Lane line with a node for each stage. */
+.stage::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: calc(-1 * var(--space-4));
+  border-top: 1px solid var(--border-strong);
+}
+.stage:last-child::before { right: 0; }
+.stage::after {
+  content: "";
+  position: absolute;
+  top: calc(-1 * var(--space-1));
+  left: 0;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+.stageLabel {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* A lit swap takes the slot: accent ring around its icon. */
+.litItem {
+  width: fit-content;
+  padding: calc(var(--space-1) / 2);
+  border-radius: calc(var(--space-2) + var(--space-1) / 2);
+  box-shadow: 0 0 0 1px var(--accent);
+  background: var(--accent-subtle);
+}
+
+.mainName {
+  display: flex;
+  flex-direction: column;
+  color: var(--foreground);
+}
+
+.litNote {
+  font-size: var(--text-xs);
+  color: var(--accent-strong);
+}
+
+.replaced {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.share {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.caption {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.alternatives {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.altRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.alt {
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--space-1) / 2);
+}
+
+/* Swap cards: lit ones (trigger matches this game) come first and take the accent. */
+.swaps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: var(--space-3);
+}
+
+.swap {
+  padding: var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--space-4);
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  transition: background-color var(--duration-standard) var(--ease-standard), border-color var(--duration-standard) var(--ease-standard);
+}
+.swap[data-active] {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swap { transition: none; }
+}
+
+.swapHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.swapTrigger {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.swap[data-active] .swapTrigger { color: var(--accent-strong); }
+
+.swapItem { color: var(--foreground); }
+
+.swapText {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.components {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.evidence {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}

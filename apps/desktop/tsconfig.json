@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": false,
+    "types": [
+      "vite/client"
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "include": [
+    "src",
+    "registry",
+    "lib",
+    "vite.config.ts"
+  ]
+}

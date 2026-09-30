@@ -1,0 +1,22 @@
+{
+  "name": "hexcards",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @hexcards/desktop",
+    "build": "npm run build -w @hexcards/desktop",
+    "typecheck": "tsc -p tsconfig.json && tsc -p apps/desktop/tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "arc:add": "node scripts/arc-add.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}

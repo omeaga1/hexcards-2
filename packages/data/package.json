@@ -1,0 +1,12 @@
+{
+  "name": "@hexcards/data",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fixtures/*": "./fixtures/*"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}

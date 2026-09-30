@@ -5,3 +5,4 @@ target/
 !.env.example
 .wrangler/
 *.log
+.vite/
