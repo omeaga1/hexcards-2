@@ -1,0 +1,65 @@
+.page {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-5);
+}
+
+.tree {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+}
+
+.treeName {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.treeName img { width: var(--space-5); height: var(--space-5); }
+
+.minors {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.rune {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  color: var(--foreground);
+}
+.rune img { display: block; }
+.rune[data-size="keystone"] img { width: var(--space-12); height: var(--space-12); }
+.rune[data-size="keystone"] span { font-family: var(--font-display); font-weight: 500; font-size: var(--text-base); }
+.rune[data-size="minor"] img {
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+}
+.rune[data-size="shard"] img {
+  width: var(--space-6);
+  height: var(--space-6);
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+}
+
+.shards {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.caption {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.card { display: grid; gap: var(--space-1); max-width: 18rem; }
+.cardTitle { font-weight: 500; color: var(--foreground); }
+.cardText { margin: 0; font-size: var(--text-xs); color: var(--text-secondary); }

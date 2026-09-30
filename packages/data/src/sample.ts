@@ -21,6 +21,7 @@ export const sampleJaxTop: ChampionBuilds = {
       runes: conquerorPage,
       spells: [4, 12],
       skillMaxOrder: ['W', 'E', 'Q'],
+      skillOrder: ["E", "Q", "W", "W", "W", "R", "W", "E", "W", "E", "R", "E", "E", "Q", "Q", "R", "Q", "Q"],
       slots: [
         { slot: 'start', common: [{ itemId: 1055, share: 0.8 }, { itemId: 2003, share: 0.8 }] },
         { slot: 'first-back', common: [{ itemId: 3057, share: 0.5 }, { itemId: 1036, share: 0.3 }] },
@@ -56,6 +57,7 @@ export const sampleJaxTop: ChampionBuilds = {
       runes: { primaryStyleId: 8000, subStyleId: 8400, perkIds: [8008, 9111, 9104, 8299, 8444, 8242, 5005, 5008, 5011] },
       spells: [4, 12],
       skillMaxOrder: ["W", "E", "Q"],
+      skillOrder: ["E", "Q", "W", "W", "W", "R", "W", "E", "W", "E", "R", "E", "E", "Q", "Q", "R", "Q", "Q"],
       slots: [
         { slot: "start", common: [{ itemId: 1055, share: 0.85 }, { itemId: 2003, share: 0.85 }] },
         { slot: "first-back", common: [{ itemId: 1043, share: 0.45 }, { itemId: 1053, share: 0.3 }] },
@@ -79,3 +81,6 @@ export const sampleJaxTop: ChampionBuilds = {
     },
   ],
 };
+
+/** Every build the app has until the pipeline publishes real ones. */
+export const sampleBuilds: ChampionBuilds[] = [sampleJaxTop];

@@ -126,7 +126,8 @@ Champion, role, patch, win/loss, the full rune page **as perk IDs**, summoner sp
 3. For each cluster, compute these **within that cluster only**, so runes and items always match:
    - most common core path (item 1 → 2 → 3) plus top 4th–6th item options
    - rune page (most common full page, validated)
-   - skill max order, summoner spells, starting items, boots
+   - skill order: the most common level 1 to 18 sequence of Q, W, E and R (from timelines), plus the max order it implies
+   - summoner spells, starting items, boots
    - pick share, win rate with a confidence interval, sample size
 4. **Automatic labels** from the cluster's stat profile ("Bruiser", "Lethality", "Crit", "On-hit", "AP Burst", "Tank", "Enchanter"). You can override labels in a small `overrides.json` for odd cases.
 5. Minimum sample rules: under N games for the patch, blend in last patch's data and mark the build "low sample". No template fallback, ever.
@@ -228,6 +229,8 @@ What Deadlock-style means here:
 - **Swaps hang off the slot they replace.** Each swap is a branch labeled with its trigger and timing: "vs heavy healing → Mortal Reminder, start Executioner's on first back". Swaps whose trigger matches this game **light up** and move to the front. The rest stay dimmed but visible, so you can plan for picks that aren't locked yet.
 - **Swaps are timed.** A lit swap shows *when* to act (first back / item 2 / item 3) and which component to buy early.
 - **Annotated sections.** As in Deadlock's build editor, every section and item can carry a one-line note ("Rush if lane is ranged").
+- **Each build is one bundle:** runes (full page with keystone, minors and shards), skill order (level 1 to 18 grid plus max order) and items, shown together on one screen.
+- **Champion browser:** a searchable grid of every champion works without League running. In champ select the app jumps to your pick.
 - **Variant switcher** at the top: 1–3 build cards with label, pick share, win rate and a "Recommended" marker with its reason.
 - **Two modes:** a full window for browsing, and a **compact overlay** during champ select showing runes, the core path, lit swaps and import status. It can stay on top.
 - Motion and density stay calm. You glance at this during a 30-second champ select.

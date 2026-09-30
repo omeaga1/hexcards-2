@@ -75,6 +75,8 @@ export const BuildVariant = z.object({
   spells: z.tuple([z.number().int(), z.number().int()]),
   /** Ability max order, e.g. ["Q", "E", "W"]. R is always taken when available. */
   skillMaxOrder: z.array(z.enum(['Q', 'W', 'E'])).length(3),
+  /** The ability leveled at each champion level, 1 through 18. */
+  skillOrder: z.array(z.enum(['Q', 'W', 'E', 'R'])).length(18),
   slots: z.array(z.object({ slot: Slot, common: z.array(CommonItem).min(1) })),
   swaps: z.array(Swap),
   stats: z.object({
