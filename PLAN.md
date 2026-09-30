@@ -131,16 +131,36 @@ Champion, role, patch, win/loss, the full rune page **as perk IDs**, summoner sp
 4. **Automatic labels** from the cluster's stat profile ("Bruiser", "Lethality", "Crit", "On-hit", "AP Burst", "Tank", "Enchanter"). You can override labels in a small `overrides.json` for odd cases.
 5. Minimum sample rules: under N games for the patch, blend in last patch's data and mark the build "low sample". No template fallback, ever.
 
-### 4.4 Situational items learned from data
-For each item, compare how often it's bought, and its win rate, **when the enemy team has trait T** versus when it doesn't. Traits include heavy healing, 2+ tanks, AP burst, lots of CC, shields. Items with a significant lift become that build's **forks**, for example "vs 2+ tanks → swap core #3 for Lord Dominik's". This is 1.0's pivot idea, but learned from real games instead of hard-coded.
+### 4.4 Common items and swaps (core feature)
+This is the heart of the app: **what this champion usually builds, what to swap each item for, and when.** Every number comes from the games in the build's own cluster.
 
-Enemy traits come from a champion trait table: Data Dragon tags, plus damage split and healing/CC/shield flags, maintained in `packages/data`.
+**Per item slot** (Start, First back, Core 1, Core 2, Core 3, Boots, 4th–6th):
+- **Commonly built:** the items players actually buy in that slot, with the share of games that bought each one and the average minute it's completed. Example for Jax Bruiser, Core 2: Sundered Sky 41% · Sterak's Gage 22% · Black Cleaver 18%.
+- **Default pick:** the most common item that isn't clearly worse on win rate.
+
+**Swaps** are rules attached to a slot. Each rule has four parts:
+
+| Part | Example |
+|---|---|
+| Replaces | Core 3 (Death's Dance) |
+| With | Chempunk Chainsword |
+| When (trigger) | Enemy has heavy healing (Soraka, Aatrox, Warwick) |
+| Timing | "Buy Executioner's Calling on your first back, finish Chempunk as item 3" |
+
+How swaps are found:
+1. Tag every game with **traits** for both teams: enemy heavy healing, 2+ tanks, mostly AP / mostly AD, AP or AD burst assassins, heavy CC, shields, and on your team no frontline, no AP, no engage.
+2. For each slot and trait, compare how often an item is bought, and its win rate, **with the trait vs without it**. An item becomes a swap when both the buy rate and the win rate rise, the difference is statistically meaningful, and there are enough games. This is 1.0's "If/Then pivot" idea, learned from real games instead of hard-coded.
+3. **Timing** comes from the purchase timeline: when players who made the swap bought its first component and finished it, for example "Executioner's on the first back (~6 min), full item by ~18 min".
+4. Every swap shows its evidence: "+3.1% win rate vs heavy healing, 4,812 games". Rules without enough evidence aren't shown.
+
+Traits come from a champion trait table in `packages/data`: Data Dragon tags, damage split, and healing/CC/shield flags. It's reviewed each patch.
 
 ### 4.5 Recommending a build in champ select
-This is deterministic math with no LLM involved:
-- For each build variant, estimate its win rate against the enemy comp using the per-trait win rates from the same data, shrunk toward the build's overall win rate when samples are small.
-- Recommend the highest, and show **why** in one line ("Enemy has 3 AD threats and a Soraka → Bruiser build + Mortal Reminder fork").
-- You can switch variants in one click. Import follows whatever is selected.
+The recommendation looks at **both teams**. It's deterministic math; no LLM is involved (see section 10):
+- For each build variant, estimate its win rate given the traits of the enemy team *and your team*, using the per-trait win rates from the same data. Small samples are shrunk toward the build's overall win rate.
+- Your team matters. If your team has no frontline, the Bruiser or Tank variant gets a boost. If your team is all AD, an AP variant (when one exists) gets a boost, because the enemy can't just stack armor.
+- Recommend the highest and show **why** in one line built from the traits that moved it: "Enemy has 3 AD threats and a Soraka; your team has no frontline → Bruiser + Mortal Reminder swap."
+- The recommendation updates live as picks lock in. You can switch variants in one click, and import follows whatever is selected.
 
 ### 4.6 Running and publishing
 - A GitHub Actions workflow runs on a schedule, up to 4 times a day. Each run can last up to 6 hours, and Actions minutes are free for public repos. At the Personal-key rate limit (100 requests per 2 minutes), that's roughly 30,000 matches a day with timelines, or about 300,000 player-games. That's plenty for a 2-week patch.
@@ -203,12 +223,15 @@ Which Arc components go where:
 Arc has no build-lane or item-fork component, so **we build those ourselves** on Arc tokens and motion: the stage lane, item nodes, component → item lines, and fork branches.
 
 What Deadlock-style means here:
-- **Build lanes, not a grid.** A horizontal flow: **Start → First back → Core 1 → Core 2 → Core 3 → Late**. Items are placed at the stage you buy them, with component → full item lines.
-- **Forks hang off the lane.** A situational swap shows as a branch from the slot it replaces, labeled with its trigger ("vs heavy healing"). It lights up when the enemy comp matches.
+- **Build lanes, not a grid.** A horizontal flow: **Start → First back → Core 1 → Core 2 → Core 3 → Late**. Items sit at the stage you buy them, with component → full item lines.
+- **Each slot shows what's commonly built.** The default item is large. Behind it is a small stack of the other common picks with their share of games, for example "41% · 22% · 18%". Hover any of them for stats and a plain-English note.
+- **Swaps hang off the slot they replace.** Each swap is a branch labeled with its trigger and timing: "vs heavy healing → Mortal Reminder, start Executioner's on first back". Swaps whose trigger matches this game **light up** and move to the front. The rest stay dimmed but visible, so you can plan for picks that aren't locked yet.
+- **Swaps are timed.** A lit swap shows *when* to act (first back / item 2 / item 3) and which component to buy early.
 - **Annotated sections.** As in Deadlock's build editor, every section and item can carry a one-line note ("Rush if lane is ranged").
 - **Variant switcher** at the top: 1–3 build cards with label, pick share, win rate and a "Recommended" marker with its reason.
-- **Two modes:** a full window for browsing, and a **compact overlay** during champ select (runes + core path + import status only). It can stay on top.
+- **Two modes:** a full window for browsing, and a **compact overlay** during champ select showing runes, the core path, lit swaps and import status. It can stay on top.
 - Motion and density stay calm. You glance at this during a 30-second champ select.
+- **Import follows the screen.** The item set sent to the client includes the lit swaps in the right blocks, so the in-game shop matches what you saw.
 
 ---
 
@@ -219,7 +242,7 @@ What Deadlock-style means here:
 | **0. Setup** | Monorepo, Tauri shell, Arc foundation + skill, CI. You register a Riot developer key. | App window opens; CI green. |
 | **1. Client bridge** | Connects to League, follows champ select live, imports a rune page + item set + spells for a few hand-entered test builds. | In a real custom game: correct page every time, your own pages untouched, sets show in the shop. Fixture replay tests pass. |
 | **2. Data pipeline** | Actions job crawls matches → clustering → published builds on GitHub Pages for every champion and role on the current patch. | Spot-check 20 champions against U.GG/Lolalytics: core items and keystones match the top builds. Every published rune page passes validation. |
-| **3. Recommender** | Enemy-comp traits → recommended variant + active forks, with a one-line reason. | Unit tests on sample comps; the recommendation changes sensibly as enemy picks lock in. |
+| **3. Recommender** | Both teams' traits → recommended variant + lit swaps with timing, with a one-line reason. | Unit tests on sample comps; the recommendation changes sensibly as enemy picks lock in. |
 | **4. UI** | Arc-based theme, custom build lanes, variant switcher, overlay mode. | Usable in a real champ select within 30 seconds. |
 | **5. Ship** | Signed installer, auto-update from GitHub Releases, settings, crash logging. | Installing on a clean Windows machine works end to end. |
 | **Later** | In-game "next buy" from the Live Client API; read-only website. | — |
@@ -244,3 +267,18 @@ Phase 1 comes before builds on purpose. Broken imports are the most visible 1.0 
 - **Hosting:** GitHub only (Actions + Pages + Releases). No Cloudflare.
 - **UI:** Arc UI components, plus custom Deadlock-style build lanes.
 - **Repo:** public, `omeaga1/hexcards-2`, alongside the original `omeaga1/hexcards`.
+
+---
+
+## 10. Jev / AI: not in v1
+
+Jev won't be used for the recommendation. The reasons:
+- **Recommending builds is a numbers question.** "Which build wins more against this comp" is answered directly by hundreds of thousands of real games. A language model would be guessing at the same answer with less information, and it can be confidently wrong in ways that are hard to notice.
+- **Deterministic results are testable.** The same comp always gives the same recommendation, and every recommendation can show its evidence. That's the same rule the Fantasy Football app follows.
+- **Jev runs on Cloudflare Workers AI**, which we just removed from the stack.
+
+Where an AI model *could* help later, only as an optional layer on top of the math:
+- Turning Riot's patch notes into short plain-English summaries of what changed for a champion.
+- Rewording a recommendation's one-line reason into friendlier text. The evidence and the pick itself stay deterministic.
+
+Revisit after v1 ships.
