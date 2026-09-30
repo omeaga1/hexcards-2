@@ -70,6 +70,8 @@ The build data is served from the web either way (section 4), so a read-only web
 
 ## 3. Architecture
 
+**No Cloudflare needed.** The only server-side work is a scheduled job that crawls matches and publishes build JSON files. GitHub gives a public repo both for free: **GitHub Actions** runs the job on a schedule, and **GitHub Pages** hosts the JSON. **GitHub Releases** already hosts the installer and auto-updates. Everything lives in one repo. Cloudflare is only an upgrade path if the crawl ever outgrows Actions.
+
 ```
 ┌────────────────────────── Desktop app (Tauri 2) ──────────────────────────┐
 │  Rust core                         │  React + TS UI                      │
@@ -85,10 +87,10 @@ The build data is served from the web either way (section 4), so a read-only web
 └────────────────────────────────────┴──────────────────────────────────────┘
                        ▲ fetch builds/{patch}/{champ}.json (cached offline)
                        │
-┌──────────────── Build data pipeline (Cloudflare) ──────────────────┐
-│  Worker (cron) → Riot Match-V5 API: crawl high-elo ranked matches   │
-│  D1: per-game build facts   →   aggregation + clustering job        │
-│  R2 / CDN: published builds per patch, champion, role               │
+┌──────────────── Build data pipeline (GitHub Actions) ───────────────┐
+│  Scheduled job → Riot Match-V5 API: crawl high-elo ranked matches   │
+│  Per-patch game facts (compressed, stored as a Release asset)       │
+│  → aggregation + clustering → GitHub Pages: builds per champ/role   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -96,12 +98,12 @@ Monorepo (npm workspaces):
 
 ```
 apps/desktop      Tauri app (src-tauri/ in Rust, src/ in React)
-apps/web          (later) read-only build browser, Cloudflare
+apps/web          (later) read-only build browser on GitHub Pages
 packages/data     zod schemas: Build, RunePage, ItemSet, EnemyComp; DDragon loaders
 packages/engine   recommendation + import builders; pure functions, unit-tested
-packages/ui       components styled with design tokens
-pipeline/         Cloudflare Worker: crawler, aggregator, publisher
-design/           tokens.json → generated CSS variables
+packages/ui       Arc UI components (copied in) + our own build-lane components
+pipeline/         Node scripts run by GitHub Actions: crawler, aggregator, publisher
+design/           Arc foundation tokens + Hex Cards overrides
 ```
 
 ---
@@ -112,7 +114,7 @@ design/           tokens.json → generated CSS variables
 Don't scrape OP.GG or U.GG. Scraping breaks whenever their pages change, it's against their terms, and you only get one build per champion. Instead:
 
 - **Riot Match-V5 API** with a registered key from developer.riotgames.com. You need to register the app yourself; I can't do that for you. A *Personal* key doesn't expire, and it's enough to start. Apply for a *Production* key before a public release.
-- Crawl ranked solo/duo games at **Emerald+** (configurable) from NA, EUW and KR. Keep only the **current patch**, plus the previous one until the new patch has enough games.
+- Crawl **Summoner's Rift** ranked solo/duo games at **Emerald+** (configurable) from NA, EUW and KR. Summoner's Rift only for v1. Keep only the **current patch**, plus the previous one until the new patch has enough games.
 - For each game, pull the match and its **timeline**. The timeline gives the real purchase order and skill level-up order.
 
 ### 4.2 What we store per player-game
@@ -140,8 +142,11 @@ This is deterministic math with no LLM involved:
 - Recommend the highest, and show **why** in one line ("Enemy has 3 AD threats and a Soraka → Bruiser build + Mortal Reminder fork").
 - You can switch variants in one click. Import follows whatever is selected.
 
-### 4.6 Publishing
-The pipeline writes `builds/{patch}/{championId}.json` plus a small `index.json` to R2 behind the CDN. The app caches it locally, so it still works offline. A new patch is detected from Data Dragon `versions.json`.
+### 4.6 Running and publishing
+- A GitHub Actions workflow runs on a schedule, up to 4 times a day. Each run can last up to 6 hours, and Actions minutes are free for public repos. At the Personal-key rate limit (100 requests per 2 minutes), that's roughly 30,000 matches a day with timelines, or about 300,000 player-games. That's plenty for a 2-week patch.
+- The Riot key is stored as an Actions secret and never goes into the repo.
+- Crawl state (per-patch game facts, compressed) is kept as a GitHub Release asset. Each run downloads it, appends new games and uploads it again.
+- The pipeline writes `builds/{patch}/{championId}.json` plus a small `index.json` to GitHub Pages. The app caches it locally, so it still works offline. A new patch is detected from Data Dragon `versions.json`.
 
 ---
 
@@ -177,7 +182,25 @@ The pipeline writes `builds/{patch}/{championId}.json` plus a small `index.json`
 
 ## 6. UI direction
 
-Design first. Before building screens, create a design system (tokens, type, color, components), the same way the Fantasy Football app is set up: a Design System artifact plus `design/tokens.json` → generated CSS variables. It should be dark by default, since it sits next to the League client, and should *not* copy Riot's gold-and-navy look.
+**Component library: Arc UI** (https://uiarc.dev, MIT). The Fantasy Football app already uses it. Components are copied into the repo as source files (shadcn-style), not installed as a package, so we own and restyle them. We reuse the `arc-add` script pattern from that project. Arc also ships an agent skill (`arc-skill`) that we install into the repo, so Claude picks and composes Arc components correctly.
+
+Theme: start from `arc-foundation` tokens, dark by default because the app sits next to the League client, with a Hex Cards accent. Don't copy Riot's gold-and-navy look. Never hard-code colors; use the tokens.
+
+Which Arc components go where:
+
+| Need | Arc component |
+|---|---|
+| Choose between the 1–3 builds | `radio-cards` (label, pick share, win rate, "Recommended" marker) |
+| Champion search | `command-palette`, `combobox` |
+| Item and rune details on hover | `hover-card`, `tooltip`, `popover` |
+| Rune page / skills / spells views | `tabs`, `segmented-control` |
+| Win rate, pick rate, sample size | `metric-card`, `gauge`, `sparkline`, `badge` |
+| Import status and errors | `toast-stack`, `alert`, `progress` |
+| Settings (auto-import, Flash key, overlay hotkey) | `switch`, `select`, `shortcut-recorder`, `drawer` |
+| Browse window layout | `resizable-panels`, `scroll-area`, `skeleton`, `empty-state` |
+| Tier list / stats (later) | `sortable-data-table`, `filter-toolbar`, `chip-group` |
+
+Arc has no build-lane or item-fork component, so **we build those ourselves** on Arc tokens and motion: the stage lane, item nodes, component → item lines, and fork branches.
 
 What Deadlock-style means here:
 - **Build lanes, not a grid.** A horizontal flow: **Start → First back → Core 1 → Core 2 → Core 3 → Late**. Items are placed at the stage you buy them, with component → full item lines.
@@ -193,13 +216,13 @@ What Deadlock-style means here:
 
 | Phase | Outcome | How you'll know it works |
 |---|---|---|
-| **0. Setup** | Monorepo, Tauri shell, design tokens, CI. You register a Riot developer key. | App window opens; CI green. |
+| **0. Setup** | Monorepo, Tauri shell, Arc foundation + skill, CI. You register a Riot developer key. | App window opens; CI green. |
 | **1. Client bridge** | Connects to League, follows champ select live, imports a rune page + item set + spells for a few hand-entered test builds. | In a real custom game: correct page every time, your own pages untouched, sets show in the shop. Fixture replay tests pass. |
-| **2. Data pipeline** | Worker crawls matches → D1 → clustering → published builds for every champion and role on the current patch. | Spot-check 20 champions against U.GG/Lolalytics: core items and keystones match the top builds. Every published rune page passes validation. |
+| **2. Data pipeline** | Actions job crawls matches → clustering → published builds on GitHub Pages for every champion and role on the current patch. | Spot-check 20 champions against U.GG/Lolalytics: core items and keystones match the top builds. Every published rune page passes validation. |
 | **3. Recommender** | Enemy-comp traits → recommended variant + active forks, with a one-line reason. | Unit tests on sample comps; the recommendation changes sensibly as enemy picks lock in. |
-| **4. UI** | Design system + build lanes + variant switcher + overlay mode. | Usable in a real champ select within 30 seconds. |
+| **4. UI** | Arc-based theme, custom build lanes, variant switcher, overlay mode. | Usable in a real champ select within 30 seconds. |
 | **5. Ship** | Signed installer, auto-update from GitHub Releases, settings, crash logging. | Installing on a clean Windows machine works end to end. |
-| **Later** | In-game "next buy" from the Live Client API; read-only website; ARAM/Arena. | — |
+| **Later** | In-game "next buy" from the Live Client API; read-only website. | — |
 
 Phase 1 comes before builds on purpose. Broken imports are the most visible 1.0 bug, and they're independent of where the builds come from.
 
@@ -213,9 +236,11 @@ Phase 1 comes before builds on purpose. Broken imports are the most visible 1.0 
 
 ---
 
-## 9. Open questions for you
+## 9. Decisions
 
-1. **Tauri or Electron?** My recommendation is Tauri. Say if you'd rather stay in all-Node.
-2. **Rank bracket and regions** for build data. Default: Emerald+, NA + EUW + KR.
-3. **Public or private GitHub repo**, and should it replace `omeaga1/hexcards` or live next to it as a new repo?
-4. **Game modes:** Summoner's Rift only for v1? ARAM and Arena need their own data.
+- **Desktop app on Tauri 2.** React + TypeScript UI with a small Rust core for the client connection.
+- **Summoner's Rift only** for v1.
+- **Build data:** Emerald+ ranked solo/duo, NA + EUW + KR.
+- **Hosting:** GitHub only (Actions + Pages + Releases). No Cloudflare.
+- **UI:** Arc UI components, plus custom Deadlock-style build lanes.
+- **Repo:** public, `omeaga1/hexcards-2`, alongside the original `omeaga1/hexcards`.
