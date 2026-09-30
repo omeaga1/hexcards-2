@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p apps/desktop/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "arc:add": "node scripts/arc-add.mjs"
+    "arc:add": "node scripts/arc-add.mjs",
+    "app": "npm run tauri -w @hexcards/desktop -- dev"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",

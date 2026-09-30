@@ -80,6 +80,37 @@
   margin-right: var(--space-2);
 }
 
+.champSelect {
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-panel);
+  background: var(--accent-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.pick {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-lg);
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.enemies {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.enemyIcon {
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+}
+
 .error {
   margin: 0;
   color: var(--danger);
