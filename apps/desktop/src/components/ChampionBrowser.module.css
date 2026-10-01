@@ -1,92 +1,238 @@
-.browser {
+/* Rail on the left (search, roles, recent), champions on the right. Stacks on narrow windows. */
+.layout {
   display: grid;
-  gap: var(--space-5);
+  grid-template-columns: 16rem minmax(0, 1fr);
+  gap: var(--space-10);
+  align-items: start;
+}
+
+.rail {
+  position: sticky;
+  top: var(--space-6);
+  display: grid;
+  gap: var(--space-6);
+}
+
+.roleNav {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.roleButton {
+  display: grid;
+  grid-template-columns: var(--space-6) 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.roleButton:hover { background: var(--surface-muted); color: var(--foreground); }
+.roleButton[aria-pressed="true"] { background: var(--accent-subtle); color: var(--foreground); }
+.roleButton img { width: var(--space-6); height: var(--space-6); }
+
+/* Stand-in mark for "All": a small filled square the size of a role icon's glyph. */
+.roleAll {
+  width: var(--space-3);
+  height: var(--space-3);
+  margin: 0 auto;
+  border-radius: var(--space-1);
+  background: var(--text-muted);
+}
+.roleButton[aria-pressed="true"] .roleAll { background: var(--accent); }
+
+.count {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.railTitle {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.recent {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.recentRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.recentButton {
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+  width: var(--space-10);
+  height: var(--space-10);
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+.recentButton:hover { border-color: var(--border-strong); }
+.recentButton img { width: 100%; height: 100%; display: block; }
+
+.caption {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.content {
+  display: grid;
+  gap: var(--space-10);
+  min-width: 0;
 }
 
 .head {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.title { font-size: var(--text-3xl); }
+
+.subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.section {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.sectionTitle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-lg);
+}
+.sectionTitle img { width: var(--space-6); height: var(--space-6); }
+
+/* Builds ready: wide splash cards, the one large visual on the page. */
+.featured {
+  display: grid;
   gap: var(--space-4);
-  flex-wrap: wrap;
 }
 
-.title { font-size: var(--text-2xl); }
-
-.search {
-  width: min(100%, 22rem);
+.featuredRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-4);
 }
 
+.feature {
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: var(--surface-raised);
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  display: grid;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+.feature:hover { border-color: var(--accent); }
+
+.splash {
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  object-fit: cover;
+  object-position: center 20%;
+  display: block;
+  transition: transform var(--duration-considered) var(--ease-standard);
+}
+.feature:hover .splash { transform: scale(1.03); }
+
+.featureText {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  position: relative;
+  background: var(--surface-raised);
+}
+
+.featureName {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--text-xl);
+}
+
+.featureMeta {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* Champion tiles: square splash crops with name and roles underneath. */
 .grid {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
-  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: var(--space-5) var(--space-4);
 }
 
-.card {
+.tile {
   width: 100%;
-  padding: var(--space-3) var(--space-2);
-  border: 1px solid transparent;
-  border-radius: var(--space-4);
-  background: transparent;
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--foreground);
   font: inherit;
-  display: grid;
-  justify-items: center;
-  gap: var(--space-2);
+  text-align: left;
   cursor: pointer;
-  transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
-}
-.card:hover { background: var(--surface-muted); border-color: var(--border); }
-
-@media (prefers-reduced-motion: reduce) {
-  .card { transition: none; }
+  display: grid;
+  gap: var(--space-2);
+  position: relative;
 }
 
-.icon {
-  width: var(--space-12);
-  height: var(--space-12);
-  border-radius: var(--space-3);
+.art {
+  display: block;
+  aspect-ratio: 1;
+  border-radius: var(--radius-panel);
+  overflow: hidden;
   border: 1px solid var(--border);
+  background: var(--surface-muted);
+  transition: border-color var(--duration-fast) var(--ease-standard);
 }
+.art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform var(--duration-considered) var(--ease-standard);
+}
+.tile:hover .art { border-color: var(--border-strong); }
+.tile:hover .art img { transform: scale(1.06); }
 
-.name {
+.tileName {
   font-size: var(--text-sm);
-  text-align: center;
   line-height: var(--leading-display);
+  padding: 0 var(--space-1);
 }
 
-.ready {
-  font-size: var(--text-xs);
-  color: var(--accent-strong);
-}
-
-.empty {
-  margin: 0;
-  color: var(--text-secondary);
-}
-
-.filters {
+.tileMeta {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-3) var(--space-4);
-}
-
-.caption {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-
-/* Role tags under each champion: main role first, the filtered role at full strength. */
-.roles {
-  display: flex;
-  justify-content: center;
   gap: var(--space-1);
   min-height: var(--space-5);
+  padding: 0 var(--space-1);
+  margin-top: calc(-1 * var(--space-1));
 }
 
 .roleIcon {
@@ -96,3 +242,39 @@
 }
 .roleIcon[data-main] { opacity: .85; }
 .roleIcon[data-active] { opacity: 1; }
+
+.pickRate {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sits on the art's top edge. A solid fill, not a gradient, so it reads on any splash. */
+.ready {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: calc(var(--space-1) / 2) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: var(--text-xs);
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roleButton, .feature, .splash, .art, .art img, .recentButton { transition: none; }
+  .feature:hover .splash, .tile:hover .art img { transform: none; }
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); }
+  .rail { position: static; }
+  .roleNav { display: flex; flex-wrap: wrap; }
+  .roleButton { grid-template-columns: auto auto auto; }
+}

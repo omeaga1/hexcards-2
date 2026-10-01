@@ -6,6 +6,7 @@ import {
   type ChampionInfo, type ItemInfo, type RuneData,
 } from '@hexcards/data';
 import { ChampionBrowser } from './components/ChampionBrowser';
+import { settings } from './lcu/settings';
 import { ChampionView } from './components/ChampionView';
 import { useLeagueClient, type ChampSelectSession } from './lcu/useLeagueClient';
 import styles from './App.module.css';
@@ -32,6 +33,17 @@ export function App() {
   const [game, setGame] = useState<GameData>({ status: 'loading' });
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [runes, setRunes] = useState<RuneData | null>(null);
+  // Read after mount: storage isn't available during the first render in every environment.
+  const [recentIds, setRecentIds] = useState<number[]>([]);
+  useEffect(() => setRecentIds(settings.recentChampions()), []);
+  useEffect(() => {
+    if (!selectedId) return;
+    setRecentIds((prev) => {
+      const next = [selectedId, ...prev.filter((id) => id !== selectedId)].slice(0, 8);
+      settings.setRecentChampions(next);
+      return next;
+    });
+  }, [selectedId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,6 +128,11 @@ export function App() {
           <ChampionBrowser
             version={game.version}
             champions={[...game.champions.values()]}
+            featured={sampleBuilds.flatMap((b) => {
+              const champion = game.champions.get(b.championId);
+              return champion ? [{ champion, role: ROLE_NAMES[b.role] ?? b.role, variantLabels: b.variants.map((v) => v.label.replace(`${champion.name} `, '')) }] : [];
+            })}
+            recent={recentIds.flatMap((id) => game.champions.get(id) ?? [])}
             hasBuild={(id) => !!buildsFor(id)}
             onSelect={setSelectedId}
           />

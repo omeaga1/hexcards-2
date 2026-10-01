@@ -1,33 +1,58 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SearchField } from './arc/search-field/search-field';
-import SegmentedControl from './arc/segmented-control/segmented-control';
-import { ROLES, ROLE_LABELS, championIconUrl, championRoles, roleIconUrl, rolesSample, type ChampionInfo, type Role } from '@hexcards/data';
+import {
+  ROLES, ROLE_LABELS, championIconUrl, championRoles, championSplashUrl, championTileUrl, roleIconUrl, rolePickRate, rolesSample,
+  type ChampionInfo, type Role,
+} from '@hexcards/data';
 import styles from './ChampionBrowser.module.css';
 
 /** "Kha'Zix", "Nunu & Willump", "Renata Glasc" all match loose typing like "khazix" or "nunu". */
 const normalize = (s: string) => s.normalize('NFD').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+const percent = (share: number) => `${(share * 100).toFixed(share < 0.1 ? 1 : 0)}%`;
+
+export interface FeaturedChampion {
+  champion: ChampionInfo;
+  /** e.g. "Top", the role the build is for. */
+  role: string;
+  variantLabels: string[];
+}
 
 interface ChampionBrowserProps {
   version: string;
   champions: ChampionInfo[];
+  featured: FeaturedChampion[];
+  recent: ChampionInfo[];
   hasBuild: (championId: number) => boolean;
   onSelect: (championId: number) => void;
 }
 
-export function ChampionBrowser({ version, champions, hasBuild, onSelect }: ChampionBrowserProps) {
+type RoleFilter = Role | 'all';
+
+export function ChampionBrowser({ version, champions, featured, recent, hasBuild, onSelect }: ChampionBrowserProps) {
   const [query, setQuery] = useState('');
-  const [role, setRole] = useState<Role | 'all'>('all');
+  const [role, setRole] = useState<RoleFilter>('all');
   const searchRef = useRef<HTMLInputElement>(null);
 
   const sorted = useMemo(() => [...champions].sort((a, b) => a.name.localeCompare(b.name)), [champions]);
-  const results = useMemo(() => {
+  const playsRole = (c: ChampionInfo, r: Role) => championRoles(c.id).some((x) => x.role === r);
+  const roleCounts = useMemo(() => Object.fromEntries(ROLES.map((r) => [r, sorted.filter((c) => playsRole(c, r)).length])), [sorted]);
+
+  const matches = useMemo(() => {
     const q = normalize(query);
-    const inRole = role === 'all' ? sorted : sorted.filter((c) => championRoles(c.id).some((r) => r.role === role));
-    if (!q) return inRole;
-    // Names that start with the query first, then names that contain it.
-    const starts = inRole.filter((c) => normalize(c.name).startsWith(q) || normalize(c.key).startsWith(q));
-    const contains = inRole.filter((c) => !starts.includes(c) && normalize(c.name).includes(q));
+    // In a role, most picked first. Otherwise alphabetical.
+    const pool = role === 'all' ? sorted : sorted.filter((c) => playsRole(c, role)).sort((a, b) => rolePickRate(b.id, role) - rolePickRate(a.id, role));
+    if (!q) return pool;
+    const starts = pool.filter((c) => normalize(c.name).startsWith(q) || normalize(c.key).startsWith(q));
+    const contains = pool.filter((c) => !starts.includes(c) && normalize(c.name).includes(q));
     return [...starts, ...contains];
+  }, [query, role, sorted]);
+
+  // With no search or role filter, group by each champion's main role.
+  const sections = useMemo(() => {
+    if (query || role !== 'all') return null;
+    const byRole = ROLES.map((r) => ({ role: r as Role | null, champions: sorted.filter((c) => championRoles(c.id)[0]?.role === r) }));
+    const unseen = sorted.filter((c) => championRoles(c.id).length === 0);
+    return [...byRole, ...(unseen.length ? [{ role: null, champions: unseen }] : [])];
   }, [query, role, sorted]);
 
   // Ctrl+K or "/" jumps to search from anywhere.
@@ -43,67 +68,125 @@ export function ChampionBrowser({ version, champions, hasBuild, onSelect }: Cham
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  return (
-    <section className={styles.browser} aria-labelledby="champions-heading">
-      <div className={styles.head}>
-        <h1 id="champions-heading" className={styles.title}>Champions</h1>
-        <div className={styles.search}>
-          <SearchField
-            ref={searchRef}
-            label="Search champions"
-            placeholder="Search champions"
-            value={query}
-            onValueChange={setQuery}
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && results[0]) onSelect(results[0].id);
-            }}
-          />
-        </div>
-      </div>
-
-      <div className={styles.filters}>
-        <SegmentedControl
-          label="Role"
-          value={role}
-          onValueChange={(v) => setRole(v as Role | 'all')}
-          options={[{ value: 'all', label: 'All' }, ...ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))]}
-        />
-        <span className={styles.caption}>
-          Roles from {rolesSample.games.toLocaleString()} high-elo games on patch {rolesSample.patch}
+  const tile = (c: ChampionInfo, pickRole?: Role) => (
+    <li key={c.id}>
+      <button type="button" className={styles.tile} onClick={() => onSelect(c.id)}>
+        <span className={styles.art}>
+          <img src={championTileUrl(c.key)} alt="" loading="lazy" draggable={false} />
         </span>
-      </div>
-
-      {results.length === 0 ? (
-        <p className={styles.empty}>
-          No {role === 'all' ? '' : `${ROLE_LABELS[role]} `}champion matches "{query}".
-        </p>
-      ) : (
-        <ul className={styles.grid}>
-          {results.map((c) => (
-            <li key={c.id}>
-              <button type="button" className={styles.card} onClick={() => onSelect(c.id)}>
-                <img className={styles.icon} src={championIconUrl(version, c.key)} alt="" loading="lazy" />
-                <span className={styles.name}>{c.name}</span>
-                <span className={styles.roles}>
-                  {championRoles(c.id).map((r, i) => (
-                    <img
-                      key={r.role}
-                      className={styles.roleIcon}
-                      data-main={i === 0 || undefined}
-                      data-active={r.role === role || undefined}
-                      src={roleIconUrl(r.role)}
-                      alt={ROLE_LABELS[r.role]}
-                      title={`${ROLE_LABELS[r.role]}: ${Math.round(r.share * 100)}% of games`}
-                    />
-                  ))}
-                </span>
-                {hasBuild(c.id) && <span className={styles.ready}>Build ready</span>}
-              </button>
-            </li>
+        <span className={styles.tileName}>{c.name}</span>
+        <span className={styles.tileMeta}>
+          {championRoles(c.id).map((r, i) => (
+            <img
+              key={r.role}
+              className={styles.roleIcon}
+              data-main={i === 0 || undefined}
+              data-active={r.role === role || undefined}
+              src={roleIconUrl(r.role)}
+              alt={ROLE_LABELS[r.role]}
+              title={`${ROLE_LABELS[r.role]}: ${Math.round(r.share * 100)}% of its games`}
+            />
           ))}
-        </ul>
-      )}
-    </section>
+          {pickRole && <span className={styles.pickRate}>{percent(rolePickRate(c.id, pickRole))} picked</span>}
+        </span>
+        {hasBuild(c.id) && <span className={styles.ready}>Build ready</span>}
+      </button>
+    </li>
+  );
+
+  return (
+    <div className={styles.layout}>
+      <aside className={styles.rail}>
+        <SearchField
+          ref={searchRef}
+          label="Search champions"
+          placeholder="Search champions"
+          value={query}
+          onValueChange={setQuery}
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && matches[0]) onSelect(matches[0].id);
+          }}
+        />
+
+        <nav className={styles.roleNav} aria-label="Filter by role">
+          {(['all', ...ROLES] as RoleFilter[]).map((r) => (
+            <button key={r} type="button" className={styles.roleButton} aria-pressed={role === r} onClick={() => setRole(r)}>
+              {r === 'all' ? <span className={styles.roleAll} aria-hidden /> : <img src={roleIconUrl(r)} alt="" />}
+              <span>{r === 'all' ? 'All champions' : ROLE_LABELS[r]}</span>
+              <span className={styles.count}>{r === 'all' ? sorted.length : roleCounts[r]}</span>
+            </button>
+          ))}
+        </nav>
+
+        {recent.length > 0 && (
+          <div className={styles.recent}>
+            <span className={styles.railTitle}>Recently viewed</span>
+            <div className={styles.recentRow}>
+              {recent.map((c) => (
+                <button key={c.id} type="button" className={styles.recentButton} onClick={() => onSelect(c.id)} title={c.name}>
+                  <img src={championIconUrl(version, c.key)} alt={c.name} />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <p className={styles.caption}>
+          Roles from {rolesSample.games.toLocaleString()} Challenger and Grandmaster games on patch {rolesSample.patch}.
+        </p>
+      </aside>
+
+      <div className={styles.content}>
+        <header className={styles.head}>
+          <h1 className={styles.title}>{role === 'all' ? 'Champions' : ROLE_LABELS[role]}</h1>
+          <p className={styles.subtitle}>
+            {query
+              ? `${matches.length} ${matches.length === 1 ? 'match' : 'matches'} for "${query}"`
+              : role === 'all'
+                ? 'Grouped by main role'
+                : 'Most picked first'}
+          </p>
+        </header>
+
+        {sections && featured.length > 0 && (
+          <section className={styles.featured} aria-labelledby="ready-heading">
+            <h2 id="ready-heading" className={styles.sectionTitle}>Builds ready</h2>
+            <div className={styles.featuredRow}>
+              {featured.map((f) => (
+                <button key={f.champion.id} type="button" className={styles.feature} onClick={() => onSelect(f.champion.id)}>
+                  <img className={styles.splash} src={championSplashUrl(f.champion.key)} alt="" draggable={false} />
+                  <span className={styles.featureText}>
+                    <span className={styles.featureName}>{f.champion.name}</span>
+                    <span className={styles.featureMeta}>
+                      {f.role} · {f.variantLabels.length} {f.variantLabels.length === 1 ? 'build' : 'builds'}: {f.variantLabels.join(', ')}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {sections ? (
+          sections.map((s) => (
+            <section key={s.role ?? 'unseen'} className={styles.section} aria-labelledby={`role-${s.role ?? 'unseen'}`}>
+              <h2 id={`role-${s.role ?? 'unseen'}`} className={styles.sectionTitle}>
+                {s.role && <img src={roleIconUrl(s.role)} alt="" />}
+                {s.role ? ROLE_LABELS[s.role] : 'Not seen this patch'}
+                <span className={styles.count}>{s.champions.length}</span>
+              </h2>
+              <ul className={styles.grid}>{s.champions.map((c) => tile(c))}</ul>
+            </section>
+          ))
+        ) : matches.length === 0 ? (
+          <p className={styles.empty}>
+            No {role === 'all' ? '' : `${ROLE_LABELS[role]} `}champion matches "{query}".
+          </p>
+        ) : (
+          <ul className={styles.grid}>{matches.map((c) => tile(c, role === 'all' ? undefined : role))}</ul>
+        )}
+      </div>
+    </div>
   );
 }

@@ -24,4 +24,13 @@ export const settings = {
     return Number.isFinite(id) && id > 0 ? id : undefined;
   },
   setRunePageId: (id: number) => write('hexcards.runePageId', String(id)),
+  recentChampions: (): number[] => {
+    try {
+      const ids = JSON.parse(read('hexcards.recent') ?? '[]');
+      return Array.isArray(ids) ? ids.filter((id): id is number => Number.isInteger(id)) : [];
+    } catch {
+      return [];
+    }
+  },
+  setRecentChampions: (ids: number[]) => write('hexcards.recent', JSON.stringify(ids)),
 };

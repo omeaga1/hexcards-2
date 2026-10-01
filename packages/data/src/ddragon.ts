@@ -107,4 +107,13 @@ export async function loadRunes(): Promise<RuneData> {
 }
 
 export const itemIconUrl = (version: string, itemId: number) => `${CDN}/cdn/${version}/img/item/${itemId}.png`;
+// Splash art file names match the champion key, except where Riot capitalizes differently.
+// Checked against every champion on 16.19.
+const ART_KEYS: Record<string, string> = { Fiddlesticks: 'FiddleSticks' };
+const artKey = (championKey: string) => ART_KEYS[championKey] ?? championKey;
+
+/** Square crop of the champion's default splash art. */
+export const championTileUrl = (championKey: string) => `${CDN}/cdn/img/champion/tiles/${artKey(championKey)}_0.jpg`;
+/** Wide (16:9) crop of the champion's default splash art. */
+export const championSplashUrl = (championKey: string) => `${CDN}/cdn/img/champion/centered/${artKey(championKey)}_0.jpg`;
 export const championIconUrl = (version: string, championKey: string) => `${CDN}/cdn/${version}/img/champion/${championKey}.png`;

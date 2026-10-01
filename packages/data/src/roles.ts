@@ -40,3 +40,13 @@ export function championRoles(championId: number): ChampionRole[] {
   // Rarely played champions may not clear the bar anywhere: keep their most played role.
   return tagged.length > 0 ? tagged : withShare.slice(0, 1);
 }
+
+/**
+ * Share of sampled games where this champion was picked in this role, 0–1.
+ * In ranked draft a champion can only be picked once per game, so this is games in role / games.
+ */
+export function rolePickRate(championId: number, role: Role): number {
+  const row = counts[championId];
+  if (!row || roleData.games === 0) return 0;
+  return (row[role.toUpperCase() as keyof typeof row] ?? 0) / roleData.games;
+}
