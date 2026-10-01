@@ -13,3 +13,6 @@ apps/desktop/src-tauri/gen/
 
 # Collected match data (published separately, too large for git)
 pipeline/data/
+
+# Generated builds (published to GitHub Pages)
+apps/desktop/public/builds/

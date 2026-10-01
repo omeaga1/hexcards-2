@@ -15,10 +15,12 @@
     "arc:add": "node scripts/arc-add.mjs",
     "app": "npm run tauri -w @hexcards/desktop -- dev",
     "data:roles": "node pipeline/src/roles.mjs",
-    "data:collect": "node pipeline/src/collect.mjs"
+    "data:collect": "node pipeline/src/collect.mjs",
+    "data:build": "tsx pipeline/src/build.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.0.3"
   }

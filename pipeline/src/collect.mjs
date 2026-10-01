@@ -92,6 +92,14 @@ function toRecord(region, match, timeline) {
       spells: [p.summoner1Id, p.summoner2Id],
       skills: skills[p.participantId] ?? '',
       buys: buys[p.participantId] ?? [],
+      // What the champion actually did, for team-composition traits (AP/AD, healing, tanking, CC):
+      // [physical, magic, true damage to champions, self healing, healing on allies,
+      //  shields on allies, damage mitigated, damage taken, seconds of CC on enemies]
+      stats: [
+        p.physicalDamageDealtToChampions, p.magicDamageDealtToChampions, p.trueDamageDealtToChampions,
+        p.totalHeal - p.totalHealsOnTeammates, p.totalHealsOnTeammates, p.totalDamageShieldedOnTeammates,
+        p.damageSelfMitigated, p.totalDamageTaken, p.timeCCingOthers,
+      ],
     })),
   };
 }
