@@ -37,7 +37,7 @@ describe('champion and matchup traits', () => {
       player(2, [2000, 500, 0, 100, 0, 0, 40000, 30000, 30]),
       player(3, [200, 9000, 100, 100, 0, 0, 3000, 3000, 5]),
       ...Array.from({ length: 9 }, (_, i) => player(4 + i, ordinary)),
-    ] as GameRecord['players'],
+    ] as unknown as GameRecord['players'],
   });
   const table = buildTraitTable(Array.from({ length: 20 }, game));
 

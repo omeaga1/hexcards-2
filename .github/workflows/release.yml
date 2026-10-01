@@ -1,0 +1,66 @@
+# Builds the Windows installer and publishes it as a GitHub Release when a version tag is pushed.
+#
+#   1. Set the same version in apps/desktop/src-tauri/tauri.conf.json, apps/desktop/src-tauri/Cargo.toml
+#      and apps/desktop/package.json (npm run version -- 0.2.0 does all three).
+#   2. Commit, then: git tag v0.2.0 && git push origin v0.2.0
+#
+# The release includes latest.json, which installed copies check at launch to offer the update.
+# Installers and updates are signed with TAURI_SIGNING_PRIVATE_KEY; the app only accepts updates
+# signed with that key.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - run: npm ci
+
+      - name: Check the tag matches the app version
+        shell: bash
+        run: |
+          version=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          if [[ "v$version" != "${GITHUB_REF_NAME}" ]]; then
+            echo "Tag ${GITHUB_REF_NAME} doesn't match the app version $version in tauri.conf.json." >&2
+            exit 1
+          fi
+
+      - uses: tauri-apps/tauri-action@v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          tauriScript: npx tauri
+          tagName: ${{ github.ref_name }}
+          releaseName: Hex Cards ${{ github.ref_name }}
+          releaseBody: |
+            Download **Hex Cards_${{ github.ref_name }}_x64-setup.exe** below and run it. It installs for your Windows user only, with no admin prompt, and adds a Start menu shortcut.
+
+            Windows may show "Windows protected your PC" because the installer isn't code-signed with a paid certificate yet. Click **More info**, then **Run anyway**.
+
+            Installed copies update themselves: when a new version is out, Hex Cards offers it at launch.
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true

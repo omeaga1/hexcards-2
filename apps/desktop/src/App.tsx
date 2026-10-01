@@ -11,6 +11,7 @@ import type { TraitTable } from '@hexcards/engine';
 import { ChampionBrowser } from './components/ChampionBrowser';
 import { settings } from './lcu/settings';
 import { ChampionView } from './components/ChampionView';
+import { UpdateBanner } from './components/UpdateBanner';
 import { useLeagueClient, type ChampSelectSession } from './lcu/useLeagueClient';
 import styles from './App.module.css';
 
@@ -175,6 +176,8 @@ export function App() {
           </Badge>
         </div>
       </header>
+
+      <UpdateBanner />
 
       {client.session && (
         <section className={styles.champSelect} aria-label="Champ select">

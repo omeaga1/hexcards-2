@@ -25,7 +25,32 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"]
+    "targets": [
+      "nsis"
+    ],
+    "createUpdaterArtifacts": true,
+    "publisher": "Hex Cards",
+    "homepage": "https://omeaga1.github.io/hexcards-2/",
+    "shortDescription": "League of Legends builds from ranked games, imported into the client",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVGREUzRjg4RjgxNkIxMTQKUldRVXNSYjRpRC9lNzFFb1VQZlBiVkt4MHVFYVZMZU1JbFlYd0pza0dROGRYT1RtREtYd3Z0V3EK",
+      "endpoints": [
+        "https://github.com/omeaga1/hexcards-2/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

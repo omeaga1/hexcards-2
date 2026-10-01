@@ -108,7 +108,10 @@ async fn stream_events(app: &AppHandle, creds: &lockfile::Credentials) -> Result
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let state = Arc::new(AppState::default());
-    tauri::Builder::default()
+    let builder = tauri::Builder::default().plugin(tauri_plugin_process::init());
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    builder
         .manage(state.clone())
         .invoke_handler(tauri::generate_handler![lcu_status, lcu_request])
         .setup(move |app| {
