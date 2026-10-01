@@ -68,7 +68,7 @@ describe('importItemSets', () => {
     const mine = { uid: 'abc-user', title: 'My Jax' } as LcuItemSet;
     const lcu = new FakeLcu({ itemSets: [mine] });
     await importItemSets(lcu, jaxTop, (v) => (v.id === 'bruiser' ? [v.swaps[0]!] : []));
-    expect(lcu.itemSets.map((s) => s.uid)).toEqual(['abc-user', 'hexcards-24-bruiser', 'hexcards-24-on-hit']);
+    expect(lcu.itemSets.map((s) => s.title)).toEqual(['My Jax', 'HexCards: Jax Bruiser', 'HexCards: Jax On-hit']);
     expect(lcu.itemSets[0]).toEqual(mine);
     const core = lcu.itemSets[1]!.blocks.find((b) => b.type === 'Core')!;
     expect(core.items.map((i) => i.id)).toEqual(['3078', '6610', '6609']);

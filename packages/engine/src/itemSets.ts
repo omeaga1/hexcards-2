@@ -5,8 +5,32 @@ const SUMMONERS_RIFT = 11;
 const CORE_SLOTS: Slot[] = ['core-1', 'core-2', 'core-3'];
 const LATE_SLOTS: Slot[] = ['late-4', 'late-5', 'late-6'];
 
-/** Prefix of every item set uid Hex Cards writes for a champion. */
-export const itemSetUidPrefix = (championId: number) => `hexcards-${championId}-`;
+export const ITEM_SET_TITLE_PREFIX = 'HexCards: ';
+
+/**
+ * A stable uid in the UUID format the client uses for every item set; it skips sets whose uid
+ * isn't a UUID. The same champion and build always get the same uid, so re-importing replaces the
+ * set instead of adding another. Not cryptographic: four FNV-1a passes over the name.
+ */
+export function itemSetUid(championId: number, variantId: string): string {
+  const name = `hexcards:${championId}:${variantId}`;
+  let hex = '';
+  for (let seed = 0; seed < 4; seed++) {
+    let h = 0x811c9dc5 ^ seed;
+    for (let i = 0; i < name.length; i++) h = Math.imul(h ^ name.charCodeAt(i), 0x01000193);
+    hex += (h >>> 0).toString(16).padStart(8, '0');
+  }
+  // Version 8 ("custom") and the RFC 9562 variant bits, so it's a well-formed UUID.
+  const v = ((parseInt(hex[16]!, 16) & 0x3) | 0x8).toString(16);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-8${hex.slice(13, 16)}-${v}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+
+/** Hex Cards' own sets for this champion: our uid format, or our title on a set tied to only this champion. */
+function isOurs(set: LcuItemSet, championId: number, ourUids: Set<string>): boolean {
+  if (ourUids.has(set.uid)) return true;
+  // Sets from Hex Cards 1.0 and the first 2.0 builds used other uids but always carried our title.
+  return set.title?.startsWith(ITEM_SET_TITLE_PREFIX) === true && set.associatedChampions?.length === 1 && set.associatedChampions[0] === championId;
+}
 
 function block(type: string, itemIds: number[]): LcuItemSetBlock | null {
   const unique = [...new Set(itemIds)];
@@ -40,10 +64,11 @@ export function buildItemSet(champion: ChampionBuilds, variant: BuildVariant, ac
   ].filter((b): b is LcuItemSetBlock => b !== null);
 
   return {
-    uid: itemSetUidPrefix(champion.championId) + variant.id,
-    title: `HexCards: ${variant.label}`,
+    uid: itemSetUid(champion.championId, variant.id),
+    title: `${ITEM_SET_TITLE_PREFIX}${variant.label}`,
     type: 'custom',
-    map: 'SR',
+    // Every set the client itself saves uses "any" with the maps listed in associatedMaps.
+    map: 'any',
     mode: 'any',
     sortrank: 0,
     startedFrom: 'blank',
@@ -59,10 +84,10 @@ export function buildItemSet(champion: ChampionBuilds, variant: BuildVariant, ac
  * including all of the user's own sets.
  */
 export function mergeItemSets(doc: LcuItemSetsDoc, championId: number, ours: LcuItemSet[], now = Date.now()): LcuItemSetsDoc {
-  const prefix = itemSetUidPrefix(championId);
+  const ourUids = new Set(ours.map((s) => s.uid));
   return {
     accountId: doc.accountId,
     timestamp: now,
-    itemSets: [...doc.itemSets.filter((s) => !s.uid?.startsWith(prefix)), ...ours],
+    itemSets: [...doc.itemSets.filter((s) => !isOurs(s, championId, ourUids)), ...ours],
   };
 }
