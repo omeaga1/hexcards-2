@@ -1,279 +1,342 @@
 {
   "patch": "16.19",
-  "generatedAt": "2026-10-01T13:50:01.762Z",
-  "games": 45,
+  "generatedAt": "2026-10-01T14:04:59.496Z",
+  "games": 1500,
   "champions": {
+    "1": {
+      "TOP": 6,
+      "JUNGLE": 0,
+      "MIDDLE": 24,
+      "BOTTOM": 1,
+      "UTILITY": 6
+    },
     "2": {
-      "TOP": 2,
-      "JUNGLE": 4,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
+      "TOP": 113,
+      "JUNGLE": 34,
+      "MIDDLE": 3,
+      "BOTTOM": 1,
       "UTILITY": 0
     },
     "3": {
-      "TOP": 0,
+      "TOP": 3,
       "JUNGLE": 0,
-      "MIDDLE": 1,
-      "BOTTOM": 0,
-      "UTILITY": 1
+      "MIDDLE": 81,
+      "BOTTOM": 2,
+      "UTILITY": 8
     },
     "4": {
-      "TOP": 1,
+      "TOP": 16,
       "JUNGLE": 0,
-      "MIDDLE": 3,
-      "BOTTOM": 0,
+      "MIDDLE": 93,
+      "BOTTOM": 5,
       "UTILITY": 0
     },
     "5": {
-      "TOP": 0,
-      "JUNGLE": 1,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 0
+      "TOP": 5,
+      "JUNGLE": 29,
+      "MIDDLE": 1,
+      "BOTTOM": 1,
+      "UTILITY": 1
     },
     "6": {
-      "TOP": 3,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 0
-    },
-    "7": {
-      "TOP": 1,
-      "JUNGLE": 0,
+      "TOP": 41,
+      "JUNGLE": 1,
       "MIDDLE": 3,
       "BOTTOM": 0,
       "UTILITY": 2
     },
-    "8": {
-      "TOP": 0,
+    "7": {
+      "TOP": 13,
       "JUNGLE": 0,
-      "MIDDLE": 1,
+      "MIDDLE": 79,
+      "BOTTOM": 0,
+      "UTILITY": 32
+    },
+    "8": {
+      "TOP": 19,
+      "JUNGLE": 0,
+      "MIDDLE": 46,
+      "BOTTOM": 13,
+      "UTILITY": 1
+    },
+    "9": {
+      "TOP": 3,
+      "JUNGLE": 33,
+      "MIDDLE": 4,
+      "BOTTOM": 0,
+      "UTILITY": 5
+    },
+    "10": {
+      "TOP": 15,
+      "JUNGLE": 0,
+      "MIDDLE": 36,
       "BOTTOM": 1,
       "UTILITY": 0
     },
-    "9": {
-      "TOP": 0,
-      "JUNGLE": 2,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 0
-    },
-    "10": {
-      "TOP": 1,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 0
-    },
     "11": {
-      "TOP": 0,
-      "JUNGLE": 4,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 0
+      "TOP": 3,
+      "JUNGLE": 52,
+      "MIDDLE": 3,
+      "BOTTOM": 1,
+      "UTILITY": 1
     },
     "12": {
       "TOP": 0,
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 15
+      "UTILITY": 204
     },
     "13": {
-      "TOP": 0,
+      "TOP": 8,
       "JUNGLE": 0,
-      "MIDDLE": 4,
+      "MIDDLE": 106,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "14": {
-      "TOP": 4,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
+      "TOP": 61,
+      "JUNGLE": 1,
+      "MIDDLE": 4,
+      "BOTTOM": 2,
       "UTILITY": 0
     },
     "15": {
       "TOP": 0,
       "JUNGLE": 0,
       "MIDDLE": 0,
-      "BOTTOM": 1,
+      "BOTTOM": 50,
       "UTILITY": 0
     },
-    "17": {
+    "16": {
       "TOP": 1,
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 0
+      "UTILITY": 43
+    },
+    "17": {
+      "TOP": 21,
+      "JUNGLE": 3,
+      "MIDDLE": 0,
+      "BOTTOM": 0,
+      "UTILITY": 2
     },
     "18": {
-      "TOP": 0,
+      "TOP": 6,
       "JUNGLE": 0,
-      "MIDDLE": 1,
-      "BOTTOM": 9,
+      "MIDDLE": 52,
+      "BOTTOM": 168,
+      "UTILITY": 0
+    },
+    "19": {
+      "TOP": 6,
+      "JUNGLE": 4,
+      "MIDDLE": 0,
+      "BOTTOM": 0,
       "UTILITY": 0
     },
     "20": {
-      "TOP": 0,
-      "JUNGLE": 0,
-      "MIDDLE": 1,
+      "TOP": 1,
+      "JUNGLE": 13,
+      "MIDDLE": 12,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "21": {
       "TOP": 0,
       "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 1,
+      "MIDDLE": 1,
+      "BOTTOM": 26,
       "UTILITY": 0
     },
     "22": {
       "TOP": 0,
       "JUNGLE": 0,
       "MIDDLE": 0,
-      "BOTTOM": 1,
-      "UTILITY": 0
+      "BOTTOM": 69,
+      "UTILITY": 4
     },
     "23": {
-      "TOP": 2,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
+      "TOP": 38,
+      "JUNGLE": 1,
+      "MIDDLE": 12,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "24": {
-      "TOP": 2,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 0
+      "TOP": 102,
+      "JUNGLE": 3,
+      "MIDDLE": 10,
+      "BOTTOM": 2,
+      "UTILITY": 5
     },
     "25": {
       "TOP": 0,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 1
+      "JUNGLE": 2,
+      "MIDDLE": 2,
+      "BOTTOM": 2,
+      "UTILITY": 11
     },
     "26": {
-      "TOP": 0,
+      "TOP": 8,
       "JUNGLE": 0,
-      "MIDDLE": 1,
-      "BOTTOM": 0,
+      "MIDDLE": 14,
+      "BOTTOM": 3,
+      "UTILITY": 18
+    },
+    "27": {
+      "TOP": 14,
+      "JUNGLE": 0,
+      "MIDDLE": 4,
+      "BOTTOM": 2,
       "UTILITY": 0
     },
     "28": {
       "TOP": 0,
-      "JUNGLE": 1,
+      "JUNGLE": 26,
       "MIDDLE": 0,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "29": {
-      "TOP": 0,
+      "TOP": 1,
       "JUNGLE": 0,
-      "MIDDLE": 1,
-      "BOTTOM": 1,
-      "UTILITY": 0
+      "MIDDLE": 7,
+      "BOTTOM": 33,
+      "UTILITY": 2
+    },
+    "30": {
+      "TOP": 5,
+      "JUNGLE": 30,
+      "MIDDLE": 8,
+      "BOTTOM": 35,
+      "UTILITY": 1
     },
     "31": {
-      "TOP": 3,
-      "JUNGLE": 1,
+      "TOP": 25,
+      "JUNGLE": 97,
+      "MIDDLE": 4,
+      "BOTTOM": 0,
+      "UTILITY": 0
+    },
+    "32": {
+      "TOP": 0,
+      "JUNGLE": 4,
+      "MIDDLE": 0,
+      "BOTTOM": 0,
+      "UTILITY": 2
+    },
+    "33": {
+      "TOP": 0,
+      "JUNGLE": 5,
       "MIDDLE": 0,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "34": {
-      "TOP": 0,
+      "TOP": 25,
       "JUNGLE": 0,
-      "MIDDLE": 2,
-      "BOTTOM": 0,
-      "UTILITY": 0
+      "MIDDLE": 43,
+      "BOTTOM": 4,
+      "UTILITY": 14
     },
     "35": {
-      "TOP": 0,
-      "JUNGLE": 1,
+      "TOP": 1,
+      "JUNGLE": 28,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 0
+      "UTILITY": 4
     },
     "36": {
-      "TOP": 1,
-      "JUNGLE": 1,
+      "TOP": 68,
+      "JUNGLE": 4,
+      "MIDDLE": 1,
+      "BOTTOM": 0,
+      "UTILITY": 1
+    },
+    "37": {
+      "TOP": 0,
+      "JUNGLE": 0,
       "MIDDLE": 0,
+      "BOTTOM": 1,
+      "UTILITY": 55
+    },
+    "38": {
+      "TOP": 2,
+      "JUNGLE": 0,
+      "MIDDLE": 16,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "39": {
-      "TOP": 3,
+      "TOP": 57,
       "JUNGLE": 0,
-      "MIDDLE": 2,
-      "BOTTOM": 0,
+      "MIDDLE": 29,
+      "BOTTOM": 1,
       "UTILITY": 0
     },
     "40": {
-      "TOP": 0,
+      "TOP": 1,
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 3
+      "UTILITY": 97
     },
     "41": {
-      "TOP": 5,
+      "TOP": 89,
       "JUNGLE": 0,
-      "MIDDLE": 0,
+      "MIDDLE": 9,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "42": {
-      "TOP": 0,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 2,
-      "UTILITY": 0
+      "TOP": 16,
+      "JUNGLE": 1,
+      "MIDDLE": 11,
+      "BOTTOM": 38,
+      "UTILITY": 1
     },
     "43": {
-      "TOP": 0,
+      "TOP": 3,
       "JUNGLE": 0,
-      "MIDDLE": 0,
+      "MIDDLE": 4,
       "BOTTOM": 0,
-      "UTILITY": 1
+      "UTILITY": 115
     },
     "44": {
       "TOP": 0,
-      "JUNGLE": 0,
+      "JUNGLE": 5,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 1
+      "UTILITY": 12
     },
     "45": {
-      "TOP": 0,
+      "TOP": 2,
       "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 1,
-      "UTILITY": 0
+      "MIDDLE": 14,
+      "BOTTOM": 12,
+      "UTILITY": 3
     },
     "48": {
-      "TOP": 0,
-      "JUNGLE": 1,
+      "TOP": 21,
+      "JUNGLE": 6,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 0
+      "UTILITY": 2
     },
     "50": {
-      "TOP": 0,
+      "TOP": 5,
       "JUNGLE": 0,
-      "MIDDLE": 1,
-      "BOTTOM": 1,
-      "UTILITY": 0
+      "MIDDLE": 6,
+      "BOTTOM": 44,
+      "UTILITY": 12
     },
     "51": {
-      "TOP": 0,
+      "TOP": 1,
       "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 6,
+      "MIDDLE": 4,
+      "BOTTOM": 177,
       "UTILITY": 0
     },
     "53": {
@@ -281,139 +344,202 @@
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 1
+      "UTILITY": 80
     },
     "54": {
-      "TOP": 1,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 0
+      "TOP": 46,
+      "JUNGLE": 5,
+      "MIDDLE": 2,
+      "BOTTOM": 1,
+      "UTILITY": 1
     },
     "55": {
-      "TOP": 0,
+      "TOP": 4,
       "JUNGLE": 0,
-      "MIDDLE": 1,
-      "BOTTOM": 1,
-      "UTILITY": 0
+      "MIDDLE": 88,
+      "BOTTOM": 13,
+      "UTILITY": 3
     },
     "56": {
       "TOP": 0,
-      "JUNGLE": 2,
+      "JUNGLE": 17,
       "MIDDLE": 0,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "57": {
-      "TOP": 0,
-      "JUNGLE": 1,
+      "TOP": 2,
+      "JUNGLE": 3,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 2
+      "UTILITY": 24
     },
     "58": {
-      "TOP": 3,
+      "TOP": 87,
       "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
+      "MIDDLE": 2,
+      "BOTTOM": 1,
       "UTILITY": 0
     },
     "59": {
       "TOP": 0,
-      "JUNGLE": 4,
+      "JUNGLE": 114,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 0
+      "UTILITY": 6
     },
     "60": {
-      "TOP": 0,
-      "JUNGLE": 4,
+      "TOP": 5,
+      "JUNGLE": 73,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 2
+      "UTILITY": 31
     },
     "61": {
       "TOP": 0,
       "JUNGLE": 0,
-      "MIDDLE": 4,
+      "MIDDLE": 66,
       "BOTTOM": 0,
-      "UTILITY": 1
+      "UTILITY": 4
     },
     "62": {
-      "TOP": 0,
-      "JUNGLE": 2,
-      "MIDDLE": 0,
+      "TOP": 6,
+      "JUNGLE": 72,
+      "MIDDLE": 1,
       "BOTTOM": 0,
       "UTILITY": 0
     },
+    "63": {
+      "TOP": 0,
+      "JUNGLE": 2,
+      "MIDDLE": 2,
+      "BOTTOM": 6,
+      "UTILITY": 6
+    },
     "64": {
-      "TOP": 1,
-      "JUNGLE": 4,
+      "TOP": 2,
+      "JUNGLE": 328,
       "MIDDLE": 0,
       "BOTTOM": 0,
+      "UTILITY": 3
+    },
+    "67": {
+      "TOP": 19,
+      "JUNGLE": 2,
+      "MIDDLE": 6,
+      "BOTTOM": 11,
       "UTILITY": 0
     },
     "68": {
-      "TOP": 2,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
+      "TOP": 44,
+      "JUNGLE": 3,
+      "MIDDLE": 3,
       "BOTTOM": 0,
-      "UTILITY": 0
+      "UTILITY": 2
     },
     "69": {
-      "TOP": 0,
+      "TOP": 14,
       "JUNGLE": 0,
-      "MIDDLE": 1,
-      "BOTTOM": 1,
+      "MIDDLE": 79,
+      "BOTTOM": 23,
+      "UTILITY": 1
+    },
+    "72": {
+      "TOP": 1,
+      "JUNGLE": 50,
+      "MIDDLE": 0,
+      "BOTTOM": 0,
+      "UTILITY": 14
+    },
+    "74": {
+      "TOP": 7,
+      "JUNGLE": 0,
+      "MIDDLE": 0,
+      "BOTTOM": 4,
       "UTILITY": 0
     },
     "75": {
-      "TOP": 1,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
+      "TOP": 30,
+      "JUNGLE": 2,
+      "MIDDLE": 21,
+      "BOTTOM": 1,
       "UTILITY": 0
     },
     "76": {
-      "TOP": 0,
-      "JUNGLE": 7,
-      "MIDDLE": 1,
-      "BOTTOM": 0,
+      "TOP": 7,
+      "JUNGLE": 154,
+      "MIDDLE": 19,
+      "BOTTOM": 3,
+      "UTILITY": 8
+    },
+    "77": {
+      "TOP": 3,
+      "JUNGLE": 23,
+      "MIDDLE": 0,
+      "BOTTOM": 2,
       "UTILITY": 0
     },
     "78": {
-      "TOP": 0,
-      "JUNGLE": 0,
+      "TOP": 15,
+      "JUNGLE": 4,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 2
+      "UTILITY": 75
     },
     "79": {
+      "TOP": 85,
+      "JUNGLE": 4,
+      "MIDDLE": 7,
+      "BOTTOM": 4,
+      "UTILITY": 2
+    },
+    "80": {
+      "TOP": 82,
+      "JUNGLE": 21,
+      "MIDDLE": 17,
+      "BOTTOM": 2,
+      "UTILITY": 45
+    },
+    "81": {
       "TOP": 1,
       "JUNGLE": 0,
-      "MIDDLE": 1,
+      "MIDDLE": 0,
+      "BOTTOM": 189,
+      "UTILITY": 0
+    },
+    "82": {
+      "TOP": 2,
+      "JUNGLE": 1,
+      "MIDDLE": 0,
       "BOTTOM": 0,
       "UTILITY": 0
     },
-    "80": {
-      "TOP": 2,
-      "JUNGLE": 1,
-      "MIDDLE": 1,
-      "BOTTOM": 0,
-      "UTILITY": 2
-    },
-    "81": {
-      "TOP": 0,
+    "83": {
+      "TOP": 20,
       "JUNGLE": 0,
       "MIDDLE": 0,
-      "BOTTOM": 3,
+      "BOTTOM": 0,
       "UTILITY": 0
     },
     "84": {
-      "TOP": 0,
+      "TOP": 27,
+      "JUNGLE": 0,
+      "MIDDLE": 103,
+      "BOTTOM": 1,
+      "UTILITY": 0
+    },
+    "85": {
+      "TOP": 25,
       "JUNGLE": 0,
       "MIDDLE": 2,
-      "BOTTOM": 0,
+      "BOTTOM": 2,
+      "UTILITY": 3
+    },
+    "86": {
+      "TOP": 19,
+      "JUNGLE": 2,
+      "MIDDLE": 8,
+      "BOTTOM": 4,
       "UTILITY": 0
     },
     "89": {
@@ -421,97 +547,139 @@
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 2
+      "UTILITY": 96
     },
-    "91": {
+    "90": {
       "TOP": 0,
-      "JUNGLE": 3,
-      "MIDDLE": 1,
+      "JUNGLE": 0,
+      "MIDDLE": 9,
       "BOTTOM": 0,
       "UTILITY": 0
     },
+    "91": {
+      "TOP": 4,
+      "JUNGLE": 135,
+      "MIDDLE": 16,
+      "BOTTOM": 0,
+      "UTILITY": 0
+    },
+    "92": {
+      "TOP": 22,
+      "JUNGLE": 5,
+      "MIDDLE": 23,
+      "BOTTOM": 8,
+      "UTILITY": 3
+    },
     "96": {
-      "TOP": 0,
+      "TOP": 7,
       "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 1,
+      "MIDDLE": 15,
+      "BOTTOM": 30,
       "UTILITY": 0
     },
     "98": {
-      "TOP": 2,
+      "TOP": 26,
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 3
+      "UTILITY": 40
+    },
+    "99": {
+      "TOP": 1,
+      "JUNGLE": 0,
+      "MIDDLE": 18,
+      "BOTTOM": 20,
+      "UTILITY": 36
     },
     "101": {
       "TOP": 0,
       "JUNGLE": 0,
+      "MIDDLE": 22,
+      "BOTTOM": 39,
+      "UTILITY": 3
+    },
+    "102": {
+      "TOP": 2,
+      "JUNGLE": 16,
       "MIDDLE": 0,
-      "BOTTOM": 3,
+      "BOTTOM": 0,
       "UTILITY": 0
     },
     "103": {
-      "TOP": 0,
+      "TOP": 8,
       "JUNGLE": 0,
-      "MIDDLE": 3,
-      "BOTTOM": 0,
-      "UTILITY": 0
+      "MIDDLE": 106,
+      "BOTTOM": 2,
+      "UTILITY": 3
     },
     "104": {
-      "TOP": 0,
-      "JUNGLE": 3,
+      "TOP": 1,
+      "JUNGLE": 109,
       "MIDDLE": 0,
-      "BOTTOM": 0,
+      "BOTTOM": 1,
       "UTILITY": 0
     },
     "105": {
-      "TOP": 1,
-      "JUNGLE": 0,
-      "MIDDLE": 1,
-      "BOTTOM": 0,
+      "TOP": 6,
+      "JUNGLE": 8,
+      "MIDDLE": 30,
+      "BOTTOM": 1,
       "UTILITY": 0
     },
     "106": {
-      "TOP": 1,
-      "JUNGLE": 0,
+      "TOP": 7,
+      "JUNGLE": 3,
       "MIDDLE": 0,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "107": {
-      "TOP": 0,
-      "JUNGLE": 1,
+      "TOP": 11,
+      "JUNGLE": 101,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 0
+      "UTILITY": 1
     },
     "110": {
-      "TOP": 2,
+      "TOP": 38,
       "JUNGLE": 0,
       "MIDDLE": 0,
-      "BOTTOM": 1,
-      "UTILITY": 0
+      "BOTTOM": 52,
+      "UTILITY": 1
     },
     "111": {
-      "TOP": 0,
+      "TOP": 1,
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 9
+      "UTILITY": 287
     },
     "112": {
-      "TOP": 1,
+      "TOP": 7,
       "JUNGLE": 0,
-      "MIDDLE": 3,
-      "BOTTOM": 7,
-      "UTILITY": 0
+      "MIDDLE": 108,
+      "BOTTOM": 59,
+      "UTILITY": 2
+    },
+    "113": {
+      "TOP": 2,
+      "JUNGLE": 12,
+      "MIDDLE": 1,
+      "BOTTOM": 0,
+      "UTILITY": 1
+    },
+    "114": {
+      "TOP": 106,
+      "JUNGLE": 0,
+      "MIDDLE": 0,
+      "BOTTOM": 5,
+      "UTILITY": 1
     },
     "115": {
       "TOP": 0,
       "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 2,
+      "MIDDLE": 4,
+      "BOTTOM": 47,
       "UTILITY": 0
     },
     "117": {
@@ -519,130 +687,165 @@
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 9
+      "UTILITY": 201
     },
     "119": {
-      "TOP": 0,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 2,
+      "TOP": 3,
+      "JUNGLE": 1,
+      "MIDDLE": 1,
+      "BOTTOM": 68,
       "UTILITY": 0
     },
     "120": {
       "TOP": 0,
-      "JUNGLE": 7,
+      "JUNGLE": 111,
       "MIDDLE": 0,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "121": {
       "TOP": 0,
-      "JUNGLE": 4,
+      "JUNGLE": 124,
       "MIDDLE": 0,
       "BOTTOM": 0,
       "UTILITY": 0
     },
-    "126": {
-      "TOP": 6,
-      "JUNGLE": 0,
-      "MIDDLE": 2,
+    "122": {
+      "TOP": 29,
+      "JUNGLE": 6,
+      "MIDDLE": 0,
       "BOTTOM": 0,
+      "UTILITY": 1
+    },
+    "126": {
+      "TOP": 233,
+      "JUNGLE": 49,
+      "MIDDLE": 47,
+      "BOTTOM": 2,
       "UTILITY": 0
     },
     "127": {
-      "TOP": 1,
+      "TOP": 23,
       "JUNGLE": 0,
-      "MIDDLE": 4,
+      "MIDDLE": 59,
       "BOTTOM": 0,
-      "UTILITY": 0
+      "UTILITY": 3
     },
     "131": {
       "TOP": 1,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
+      "JUNGLE": 14,
+      "MIDDLE": 12,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "133": {
+      "TOP": 19,
+      "JUNGLE": 41,
+      "MIDDLE": 4,
+      "BOTTOM": 1,
+      "UTILITY": 0
+    },
+    "134": {
+      "TOP": 4,
+      "JUNGLE": 0,
+      "MIDDLE": 237,
+      "BOTTOM": 59,
+      "UTILITY": 3
+    },
+    "136": {
+      "TOP": 5,
+      "JUNGLE": 2,
+      "MIDDLE": 18,
+      "BOTTOM": 28,
+      "UTILITY": 0
+    },
+    "141": {
       "TOP": 0,
-      "JUNGLE": 1,
+      "JUNGLE": 22,
       "MIDDLE": 0,
       "BOTTOM": 0,
       "UTILITY": 0
     },
-    "134": {
+    "142": {
+      "TOP": 14,
+      "JUNGLE": 0,
+      "MIDDLE": 91,
+      "BOTTOM": 1,
+      "UTILITY": 36
+    },
+    "143": {
+      "TOP": 0,
+      "JUNGLE": 23,
+      "MIDDLE": 2,
+      "BOTTOM": 14,
+      "UTILITY": 8
+    },
+    "145": {
+      "TOP": 2,
+      "JUNGLE": 2,
+      "MIDDLE": 0,
+      "BOTTOM": 160,
+      "UTILITY": 1
+    },
+    "147": {
       "TOP": 1,
       "JUNGLE": 0,
-      "MIDDLE": 8,
-      "BOTTOM": 1,
-      "UTILITY": 0
+      "MIDDLE": 0,
+      "BOTTOM": 18,
+      "UTILITY": 47
     },
-    "136": {
-      "TOP": 0,
+    "150": {
+      "TOP": 67,
       "JUNGLE": 0,
       "MIDDLE": 0,
-      "BOTTOM": 1,
+      "BOTTOM": 2,
       "UTILITY": 0
     },
-    "142": {
-      "TOP": 0,
-      "JUNGLE": 0,
+    "154": {
+      "TOP": 15,
+      "JUNGLE": 34,
       "MIDDLE": 1,
       "BOTTOM": 0,
       "UTILITY": 3
     },
-    "145": {
-      "TOP": 0,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 5,
-      "UTILITY": 0
-    },
-    "150": {
-      "TOP": 3,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 0
-    },
-    "154": {
-      "TOP": 3,
-      "JUNGLE": 1,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 0
-    },
     "157": {
-      "TOP": 1,
+      "TOP": 51,
       "JUNGLE": 0,
-      "MIDDLE": 2,
-      "BOTTOM": 1,
-      "UTILITY": 0
+      "MIDDLE": 92,
+      "BOTTOM": 41,
+      "UTILITY": 1
+    },
+    "161": {
+      "TOP": 3,
+      "JUNGLE": 0,
+      "MIDDLE": 5,
+      "BOTTOM": 15,
+      "UTILITY": 15
     },
     "163": {
-      "TOP": 0,
-      "JUNGLE": 0,
-      "MIDDLE": 1,
-      "BOTTOM": 0,
-      "UTILITY": 0
+      "TOP": 3,
+      "JUNGLE": 26,
+      "MIDDLE": 56,
+      "BOTTOM": 5,
+      "UTILITY": 10
     },
     "164": {
-      "TOP": 5,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 2
-    },
-    "166": {
-      "TOP": 1,
-      "JUNGLE": 0,
+      "TOP": 119,
+      "JUNGLE": 2,
       "MIDDLE": 3,
       "BOTTOM": 0,
+      "UTILITY": 79
+    },
+    "166": {
+      "TOP": 9,
+      "JUNGLE": 0,
+      "MIDDLE": 24,
+      "BOTTOM": 1,
       "UTILITY": 0
     },
     "200": {
       "TOP": 0,
-      "JUNGLE": 1,
+      "JUNGLE": 16,
       "MIDDLE": 0,
       "BOTTOM": 0,
       "UTILITY": 0
@@ -652,47 +855,54 @@
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 1
+      "UTILITY": 59
     },
     "202": {
-      "TOP": 0,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 7,
+      "TOP": 1,
+      "JUNGLE": 2,
+      "MIDDLE": 2,
+      "BOTTOM": 258,
       "UTILITY": 0
     },
     "203": {
-      "TOP": 0,
-      "JUNGLE": 1,
-      "MIDDLE": 0,
+      "TOP": 1,
+      "JUNGLE": 31,
+      "MIDDLE": 2,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "221": {
-      "TOP": 0,
+      "TOP": 5,
       "JUNGLE": 0,
-      "MIDDLE": 1,
-      "BOTTOM": 5,
+      "MIDDLE": 5,
+      "BOTTOM": 161,
       "UTILITY": 0
     },
     "222": {
       "TOP": 0,
       "JUNGLE": 0,
       "MIDDLE": 0,
-      "BOTTOM": 3,
+      "BOTTOM": 90,
       "UTILITY": 0
     },
     "223": {
-      "TOP": 1,
+      "TOP": 4,
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 1
+      "UTILITY": 7
+    },
+    "233": {
+      "TOP": 1,
+      "JUNGLE": 5,
+      "MIDDLE": 0,
+      "BOTTOM": 0,
+      "UTILITY": 0
     },
     "234": {
-      "TOP": 0,
-      "JUNGLE": 2,
-      "MIDDLE": 0,
+      "TOP": 5,
+      "JUNGLE": 75,
+      "MIDDLE": 7,
       "BOTTOM": 0,
       "UTILITY": 0
     },
@@ -700,56 +910,84 @@
       "TOP": 0,
       "JUNGLE": 0,
       "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 1
+      "BOTTOM": 3,
+      "UTILITY": 77
     },
     "236": {
-      "TOP": 1,
-      "JUNGLE": 0,
-      "MIDDLE": 1,
-      "BOTTOM": 0,
+      "TOP": 9,
+      "JUNGLE": 4,
+      "MIDDLE": 60,
+      "BOTTOM": 62,
       "UTILITY": 0
     },
     "238": {
-      "TOP": 1,
-      "JUNGLE": 1,
-      "MIDDLE": 0,
-      "BOTTOM": 1,
+      "TOP": 21,
+      "JUNGLE": 18,
+      "MIDDLE": 46,
+      "BOTTOM": 5,
       "UTILITY": 0
     },
     "240": {
-      "TOP": 5,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 1
-    },
-    "245": {
-      "TOP": 0,
+      "TOP": 73,
       "JUNGLE": 0,
       "MIDDLE": 1,
       "BOTTOM": 0,
-      "UTILITY": 0
+      "UTILITY": 2
+    },
+    "245": {
+      "TOP": 9,
+      "JUNGLE": 35,
+      "MIDDLE": 65,
+      "BOTTOM": 5,
+      "UTILITY": 3
     },
     "246": {
-      "TOP": 0,
-      "JUNGLE": 6,
-      "MIDDLE": 2,
-      "BOTTOM": 0,
-      "UTILITY": 0
+      "TOP": 8,
+      "JUNGLE": 232,
+      "MIDDLE": 16,
+      "BOTTOM": 2,
+      "UTILITY": 2
     },
     "254": {
-      "TOP": 0,
-      "JUNGLE": 2,
+      "TOP": 1,
+      "JUNGLE": 83,
+      "MIDDLE": 0,
+      "BOTTOM": 0,
+      "UTILITY": 2
+    },
+    "266": {
+      "TOP": 51,
+      "JUNGLE": 32,
       "MIDDLE": 0,
       "BOTTOM": 0,
       "UTILITY": 0
     },
-    "266": {
-      "TOP": 4,
-      "JUNGLE": 1,
+    "267": {
+      "TOP": 0,
+      "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
+      "UTILITY": 61
+    },
+    "268": {
+      "TOP": 7,
+      "JUNGLE": 0,
+      "MIDDLE": 22,
+      "BOTTOM": 1,
+      "UTILITY": 0
+    },
+    "350": {
+      "TOP": 0,
+      "JUNGLE": 0,
+      "MIDDLE": 0,
+      "BOTTOM": 0,
+      "UTILITY": 46
+    },
+    "360": {
+      "TOP": 0,
+      "JUNGLE": 0,
+      "MIDDLE": 0,
+      "BOTTOM": 12,
       "UTILITY": 0
     },
     "412": {
@@ -757,27 +995,34 @@
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 4
+      "UTILITY": 142
     },
     "420": {
-      "TOP": 1,
+      "TOP": 17,
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "421": {
-      "TOP": 0,
-      "JUNGLE": 6,
+      "TOP": 7,
+      "JUNGLE": 54,
       "MIDDLE": 0,
       "BOTTOM": 0,
       "UTILITY": 0
     },
-    "429": {
-      "TOP": 0,
-      "JUNGLE": 0,
+    "427": {
+      "TOP": 1,
+      "JUNGLE": 33,
       "MIDDLE": 0,
-      "BOTTOM": 5,
+      "BOTTOM": 1,
+      "UTILITY": 1
+    },
+    "429": {
+      "TOP": 13,
+      "JUNGLE": 0,
+      "MIDDLE": 1,
+      "BOTTOM": 146,
       "UTILITY": 0
     },
     "432": {
@@ -785,34 +1030,48 @@
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 8
+      "UTILITY": 203
     },
     "497": {
       "TOP": 0,
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 1
+      "UTILITY": 106
     },
-    "517": {
-      "TOP": 0,
-      "JUNGLE": 5,
-      "MIDDLE": 3,
-      "BOTTOM": 0,
-      "UTILITY": 1
-    },
-    "518": {
+    "498": {
       "TOP": 0,
       "JUNGLE": 0,
       "MIDDLE": 0,
+      "BOTTOM": 48,
+      "UTILITY": 0
+    },
+    "516": {
+      "TOP": 38,
+      "JUNGLE": 0,
+      "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 2
+      "UTILITY": 1
+    },
+    "517": {
+      "TOP": 24,
+      "JUNGLE": 82,
+      "MIDDLE": 126,
+      "BOTTOM": 10,
+      "UTILITY": 20
+    },
+    "518": {
+      "TOP": 1,
+      "JUNGLE": 2,
+      "MIDDLE": 4,
+      "BOTTOM": 1,
+      "UTILITY": 37
     },
     "523": {
       "TOP": 0,
       "JUNGLE": 0,
       "MIDDLE": 0,
-      "BOTTOM": 1,
+      "BOTTOM": 142,
       "UTILITY": 0
     },
     "526": {
@@ -820,61 +1079,75 @@
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 4
+      "UTILITY": 170
     },
     "555": {
       "TOP": 0,
       "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 0,
-      "UTILITY": 2
+      "MIDDLE": 2,
+      "BOTTOM": 4,
+      "UTILITY": 94
+    },
+    "711": {
+      "TOP": 4,
+      "JUNGLE": 0,
+      "MIDDLE": 31,
+      "BOTTOM": 2,
+      "UTILITY": 4
     },
     "777": {
-      "TOP": 3,
+      "TOP": 125,
       "JUNGLE": 0,
-      "MIDDLE": 7,
-      "BOTTOM": 1,
+      "MIDDLE": 131,
+      "BOTTOM": 27,
       "UTILITY": 0
     },
     "799": {
-      "TOP": 2,
-      "JUNGLE": 3,
-      "MIDDLE": 0,
+      "TOP": 138,
+      "JUNGLE": 55,
+      "MIDDLE": 9,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "800": {
       "TOP": 0,
       "JUNGLE": 0,
-      "MIDDLE": 0,
-      "BOTTOM": 1,
+      "MIDDLE": 10,
+      "BOTTOM": 19,
       "UTILITY": 0
     },
     "804": {
-      "TOP": 0,
-      "JUNGLE": 0,
+      "TOP": 1,
+      "JUNGLE": 1,
       "MIDDLE": 0,
-      "BOTTOM": 12,
+      "BOTTOM": 298,
       "UTILITY": 0
     },
     "805": {
-      "TOP": 0,
+      "TOP": 5,
+      "JUNGLE": 21,
+      "MIDDLE": 159,
+      "BOTTOM": 15,
+      "UTILITY": 3
+    },
+    "875": {
+      "TOP": 9,
       "JUNGLE": 0,
-      "MIDDLE": 11,
+      "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 0
+      "UTILITY": 1
     },
     "876": {
       "TOP": 0,
-      "JUNGLE": 1,
+      "JUNGLE": 37,
       "MIDDLE": 0,
       "BOTTOM": 0,
       "UTILITY": 0
     },
     "887": {
-      "TOP": 1,
-      "JUNGLE": 0,
-      "MIDDLE": 0,
+      "TOP": 37,
+      "JUNGLE": 18,
+      "MIDDLE": 3,
       "BOTTOM": 0,
       "UTILITY": 0
     },
@@ -883,28 +1156,63 @@
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 2
+      "UTILITY": 55
     },
     "893": {
-      "TOP": 1,
+      "TOP": 29,
       "JUNGLE": 0,
-      "MIDDLE": 1,
-      "BOTTOM": 0,
+      "MIDDLE": 77,
+      "BOTTOM": 3,
+      "UTILITY": 1
+    },
+    "895": {
+      "TOP": 0,
+      "JUNGLE": 0,
+      "MIDDLE": 0,
+      "BOTTOM": 5,
       "UTILITY": 0
     },
     "897": {
-      "TOP": 1,
+      "TOP": 100,
+      "JUNGLE": 0,
+      "MIDDLE": 4,
+      "BOTTOM": 0,
+      "UTILITY": 1
+    },
+    "901": {
+      "TOP": 0,
+      "JUNGLE": 0,
+      "MIDDLE": 0,
+      "BOTTOM": 6,
+      "UTILITY": 0
+    },
+    "902": {
+      "TOP": 0,
       "JUNGLE": 0,
       "MIDDLE": 0,
       "BOTTOM": 0,
-      "UTILITY": 0
+      "UTILITY": 44
+    },
+    "904": {
+      "TOP": 25,
+      "JUNGLE": 2,
+      "MIDDLE": 0,
+      "BOTTOM": 1,
+      "UTILITY": 1
     },
     "910": {
-      "TOP": 0,
+      "TOP": 1,
       "JUNGLE": 0,
-      "MIDDLE": 2,
-      "BOTTOM": 1,
-      "UTILITY": 0
+      "MIDDLE": 31,
+      "BOTTOM": 30,
+      "UTILITY": 2
+    },
+    "950": {
+      "TOP": 1,
+      "JUNGLE": 54,
+      "MIDDLE": 10,
+      "BOTTOM": 3,
+      "UTILITY": 1
     }
   }
 }
