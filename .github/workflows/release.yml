@@ -56,7 +56,7 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: Hex Cards ${{ github.ref_name }}
           releaseBody: |
-            Download **Hex Cards_${{ github.ref_name }}_x64-setup.exe** below and run it. It installs for your Windows user only, with no admin prompt, and adds a Start menu shortcut.
+            Download the **_x64-setup.exe** file below and run it. It installs for your Windows user only, with no admin prompt, and adds a Start menu shortcut.
 
             Windows may show "Windows protected your PC" because the installer isn't code-signed with a paid certificate yet. Click **More info**, then **Run anyway**.
 
