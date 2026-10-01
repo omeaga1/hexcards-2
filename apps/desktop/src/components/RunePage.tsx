@@ -1,4 +1,4 @@
-import { HoverCard } from '@/registry/components/hover-card/hover-card';
+import { HoverCard } from './arc/hover-card/hover-card';
 import type { RuneData, RunePage as RunePageData } from '@hexcards/data';
 import styles from './RunePage.module.css';
 

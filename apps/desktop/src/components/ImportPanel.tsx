@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Button } from '@/registry/components/button/button';
-import { Switch } from '@/registry/components/switch/switch';
+import { Button } from './arc/button/button';
+import { Switch } from './arc/switch/switch';
 import type { BuildVariant, ChampionBuilds, LcuPerkPage, Swap } from '@hexcards/data';
 import { ImportError, importItemSets, importRunes, importSpells } from '@hexcards/engine';
 import { lcuClient } from '../lcu/useLeagueClient';

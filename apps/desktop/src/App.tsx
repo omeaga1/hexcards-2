@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Badge } from '@/registry/components/badge/badge';
-import { Skeleton } from '@/registry/components/skeleton/skeleton';
+import { Badge } from './components/arc/badge/badge';
+import { Skeleton } from './components/arc/skeleton/skeleton';
 import {
   championIconUrl, latestVersion, loadChampions, loadItems, loadRunes, sampleBuilds,
   type ChampionInfo, type ItemInfo, type RuneData,

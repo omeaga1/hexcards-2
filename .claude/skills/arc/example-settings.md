@@ -24,12 +24,12 @@ npx shadcn@latest add @uiarc/input @uiarc/select @uiarc/switch @uiarc/button @ui
 
 import { useId, useState, type FormEvent } from "react";
 import { Trash2 } from "lucide-react";
-import { Alert } from "@/registry/components/alert/alert";
-import { Button } from "@/registry/components/button/button";
-import { ConfirmMorph } from "@/registry/components/confirm-morph/confirm-morph";
-import { Input } from "@/registry/components/input/input";
-import { Select } from "@/registry/components/select/select";
-import { Switch } from "@/registry/components/switch/switch";
+import { Alert } from "@/components/arc/alert/alert";
+import { Button } from "@/components/arc/button/button";
+import { ConfirmMorph } from "@/components/arc/confirm-morph/confirm-morph";
+import { Input } from "@/components/arc/input/input";
+import { Select } from "@/components/arc/select/select";
+import { Switch } from "@/components/arc/switch/switch";
 import styles from "./settings.module.css";
 
 type Profile = { name: string; email: string; timeZone: string };

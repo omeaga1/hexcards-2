@@ -24,11 +24,11 @@ npx shadcn@latest add @uiarc/billing-toggle @uiarc/button @uiarc/badge @uiarc/pl
 
 import { useId, useState } from "react";
 import { Check } from "lucide-react";
-import { Badge } from "@/registry/components/badge/badge";
-import { BillingPrice, BillingToggle } from "@/registry/components/billing-toggle/billing-toggle";
-import { Button } from "@/registry/components/button/button";
-import { PlanMatrix } from "@/registry/components/plan-matrix/plan-matrix";
-import { FaqSection } from "@/registry/blocks/faq-section/faq-section";
+import { Badge } from "@/components/arc/badge/badge";
+import { BillingPrice, BillingToggle } from "@/components/arc/billing-toggle/billing-toggle";
+import { Button } from "@/components/arc/button/button";
+import { PlanMatrix } from "@/components/arc/plan-matrix/plan-matrix";
+import { FaqSection } from "@/components/arc/blocks/faq-section/faq-section";
 import styles from "./pricing.module.css";
 
 const plans = [

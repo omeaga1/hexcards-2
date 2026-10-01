@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/registry/components/button/button';
-import { RadioCards } from '@/registry/components/radio-cards/radio-cards';
-import { Switch } from '@/registry/components/switch/switch';
+import { Button } from './arc/button/button';
+import { RadioCards } from './arc/radio-cards/radio-cards';
+import { Switch } from './arc/switch/switch';
 import {
   TRAIT_LABELS, championIconUrl, loadAbilities,
   type AbilityInfo, type ChampionBuilds, type ChampionInfo, type ItemInfo, type RuneData, type Trait,

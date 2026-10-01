@@ -23,14 +23,14 @@ npx shadcn@latest add @uiarc/button @uiarc/segmented-control @uiarc/stat-card @u
 "use client";
 
 import { Download } from "lucide-react";
-import { Alert } from "@/registry/components/alert/alert";
-import { Button } from "@/registry/components/button/button";
-import { EmptyState } from "@/registry/components/empty-state/empty-state";
-import { LineChart, type LineChartDatum } from "@/registry/components/line-chart/line-chart";
-import SegmentedControl from "@/registry/components/segmented-control/segmented-control";
-import { Skeleton } from "@/registry/components/skeleton/skeleton";
-import { SortableDataTable } from "@/registry/components/sortable-data-table/sortable-data-table";
-import { StatCard } from "@/registry/components/stat-card/stat-card";
+import { Alert } from "@/components/arc/alert/alert";
+import { Button } from "@/components/arc/button/button";
+import { EmptyState } from "@/components/arc/empty-state/empty-state";
+import { LineChart, type LineChartDatum } from "@/components/arc/line-chart/line-chart";
+import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
+import { Skeleton } from "@/components/arc/skeleton/skeleton";
+import { SortableDataTable } from "@/components/arc/sortable-data-table/sortable-data-table";
+import { StatCard } from "@/components/arc/stat-card/stat-card";
 import styles from "./overview.module.css";
 
 type Kpi = { label: string; value: string; change: string; trend: "up" | "down" | "flat" };

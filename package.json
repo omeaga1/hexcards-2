@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "arc:add": "node scripts/arc-add.mjs",
-    "app": "npm run tauri -w @hexcards/desktop -- dev"
+    "app": "npm run tauri -w @hexcards/desktop -- dev",
+    "data:roles": "node pipeline/src/roles.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",

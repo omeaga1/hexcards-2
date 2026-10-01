@@ -68,3 +68,31 @@
   margin: 0;
   color: var(--text-secondary);
 }
+
+.filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+
+.caption {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Role tags under each champion: main role first, the filtered role at full strength. */
+.roles {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: var(--space-5);
+}
+
+.roleIcon {
+  width: var(--space-5);
+  height: var(--space-5);
+  opacity: .45;
+}
+.roleIcon[data-main] { opacity: .85; }
+.roleIcon[data-active] { opacity: 1; }

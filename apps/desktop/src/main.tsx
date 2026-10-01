@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@fontsource-variable/geist';
 import '@fontsource-variable/inter';
-import '@/registry/foundation.css';
+import './components/arc/foundation.css';
 import './app.css';
 import { App } from './App';
 

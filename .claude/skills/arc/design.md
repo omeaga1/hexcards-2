@@ -1,6 +1,6 @@
 # Arc design
 
-The visual rules for anything built with or next to Arc components. Every token below is defined in `registry/foundation.css`.
+The visual rules for anything built with or next to Arc components. Every token below is defined in `components/arc/foundation.css`.
 
 ## Contents
 - Color

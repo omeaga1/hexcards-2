@@ -3,7 +3,7 @@
 import { isValidElement, useEffect, useLayoutEffect, useRef } from "react";
 import type { HTMLAttributes, ReactNode } from "react";
 import { AnimatePresence, animate, motion, useIsPresent, useMotionValue, useReducedMotion, type AnimationPlaybackControls, type HTMLMotionProps, type TargetAndTransition, type Transition } from "motion/react";
-import { motionTokens } from "@/lib/motion-tokens";
+import { motionTokens } from "../lib/motion-tokens";
 import styles from "./badge.module.css";
 
 export type BadgeTone = "neutral" | "success" | "info" | "warning" | "danger";

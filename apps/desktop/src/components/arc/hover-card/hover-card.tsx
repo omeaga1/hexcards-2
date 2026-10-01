@@ -4,7 +4,7 @@ import { forwardRef, useCallback, useEffect, useId, useLayoutEffect, useRef, use
 import type { FocusEvent, HTMLAttributes, PointerEvent, ReactElement, ReactNode } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { AnimatePresence, animate, motion, useMotionValue, usePresence, useReducedMotion } from "motion/react";
-import { motionTokens } from "@/lib/motion-tokens";
+import { motionTokens } from "../lib/motion-tokens";
 import styles from "./hover-card.module.css";
 
 const OPEN_DELAY = 500;

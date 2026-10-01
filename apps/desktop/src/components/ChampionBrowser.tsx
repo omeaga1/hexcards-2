@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { SearchField } from '@/registry/components/search-field/search-field';
-import { championIconUrl, type ChampionInfo } from '@hexcards/data';
+import { SearchField } from './arc/search-field/search-field';
+import SegmentedControl from './arc/segmented-control/segmented-control';
+import { ROLES, ROLE_LABELS, championIconUrl, championRoles, roleIconUrl, rolesSample, type ChampionInfo, type Role } from '@hexcards/data';
 import styles from './ChampionBrowser.module.css';
 
 /** "Kha'Zix", "Nunu & Willump", "Renata Glasc" all match loose typing like "khazix" or "nunu". */
@@ -15,17 +16,19 @@ interface ChampionBrowserProps {
 
 export function ChampionBrowser({ version, champions, hasBuild, onSelect }: ChampionBrowserProps) {
   const [query, setQuery] = useState('');
+  const [role, setRole] = useState<Role | 'all'>('all');
   const searchRef = useRef<HTMLInputElement>(null);
 
   const sorted = useMemo(() => [...champions].sort((a, b) => a.name.localeCompare(b.name)), [champions]);
   const results = useMemo(() => {
     const q = normalize(query);
-    if (!q) return sorted;
+    const inRole = role === 'all' ? sorted : sorted.filter((c) => championRoles(c.id).some((r) => r.role === role));
+    if (!q) return inRole;
     // Names that start with the query first, then names that contain it.
-    const starts = sorted.filter((c) => normalize(c.name).startsWith(q) || normalize(c.key).startsWith(q));
-    const contains = sorted.filter((c) => !starts.includes(c) && normalize(c.name).includes(q));
+    const starts = inRole.filter((c) => normalize(c.name).startsWith(q) || normalize(c.key).startsWith(q));
+    const contains = inRole.filter((c) => !starts.includes(c) && normalize(c.name).includes(q));
     return [...starts, ...contains];
-  }, [query, sorted]);
+  }, [query, role, sorted]);
 
   // Ctrl+K or "/" jumps to search from anywhere.
   useEffect(() => {
@@ -59,8 +62,22 @@ export function ChampionBrowser({ version, champions, hasBuild, onSelect }: Cham
         </div>
       </div>
 
+      <div className={styles.filters}>
+        <SegmentedControl
+          label="Role"
+          value={role}
+          onValueChange={(v) => setRole(v as Role | 'all')}
+          options={[{ value: 'all', label: 'All' }, ...ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))]}
+        />
+        <span className={styles.caption}>
+          Roles from {rolesSample.games.toLocaleString()} high-elo games on patch {rolesSample.patch}
+        </span>
+      </div>
+
       {results.length === 0 ? (
-        <p className={styles.empty}>No champion matches "{query}".</p>
+        <p className={styles.empty}>
+          No {role === 'all' ? '' : `${ROLE_LABELS[role]} `}champion matches "{query}".
+        </p>
       ) : (
         <ul className={styles.grid}>
           {results.map((c) => (
@@ -68,6 +85,19 @@ export function ChampionBrowser({ version, champions, hasBuild, onSelect }: Cham
               <button type="button" className={styles.card} onClick={() => onSelect(c.id)}>
                 <img className={styles.icon} src={championIconUrl(version, c.key)} alt="" loading="lazy" />
                 <span className={styles.name}>{c.name}</span>
+                <span className={styles.roles}>
+                  {championRoles(c.id).map((r, i) => (
+                    <img
+                      key={r.role}
+                      className={styles.roleIcon}
+                      data-main={i === 0 || undefined}
+                      data-active={r.role === role || undefined}
+                      src={roleIconUrl(r.role)}
+                      alt={ROLE_LABELS[r.role]}
+                      title={`${ROLE_LABELS[r.role]}: ${Math.round(r.share * 100)}% of games`}
+                    />
+                  ))}
+                </span>
                 {hasBuild(c.id) && <span className={styles.ready}>Build ready</span>}
               </button>
             </li>

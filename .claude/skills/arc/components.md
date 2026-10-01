@@ -172,7 +172,7 @@ Notes:
 
 ## Wiring rules
 
-- Copy the import from the usage example: `import { Button } from "@/registry/components/button/button";`, `import SegmentedControl from "@/registry/components/segmented-control/segmented-control";`, blocks from `@/registry/blocks/<id>/<id>`.
+- Copy the import from the usage example: `import { Button } from "@/components/arc/button/button";`, `import SegmentedControl from "@/components/arc/segmented-control/segmented-control";`, blocks from `@/components/arc/blocks/<id>/<id>`.
 - Use only documented props. Extra native props pass through to the root; use `className` for layout (margin, grid placement), never to restyle internals.
 - Pick controlled (`value` plus a change handler) or uncontrolled (`defaultValue`), not both.
 - Async callbacks (`onConfirm`, `onSubmit`, `onSave`) return the promise; reject to show the item's error state. Do not add a second spinner.

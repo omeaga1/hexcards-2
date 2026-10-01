@@ -4,17 +4,10 @@
     "noUncheckedIndexedAccess": false,
     "types": [
       "vite/client"
-    ],
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    }
+    ]
   },
   "include": [
     "src",
-    "registry",
-    "lib",
     "vite.config.ts"
   ]
 }

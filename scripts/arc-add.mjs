@@ -1,13 +1,13 @@
 // Installs Arc UI (https://uiarc.dev, MIT) items from its public shadcn-style registry
 // without the shadcn CLI. Usage: npm run arc:add -- button radio-cards arc-skill
-// Components land in apps/desktop (e.g. apps/desktop/registry/components/button/button.tsx),
-// where Arc's "@/" import alias points. The agent skill (.claude/...) lands at the repo root.
+// Components land in apps/desktop/src/components/arc/<name>/ (Arc's "@components/arc/..." targets,
+// which import each other with relative paths). The agent skill ("~/.claude/...") lands at the repo root.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const APP = join(REPO, 'apps', 'desktop');
+const COMPONENTS = join(REPO, 'apps', 'desktop', 'src', 'components');
 const REGISTRY = 'https://uiarc.dev/r';
 
 const names = process.argv.slice(2);
@@ -30,9 +30,12 @@ async function add(ref) {
   for (const dep of item.registryDependencies ?? []) await add(dep);
   for (const dep of item.dependencies ?? []) npmDeps.add(dep);
   for (const file of item.files ?? []) {
-    if (!file.target?.startsWith('~/')) throw new Error(`${item.name}: unexpected target ${file.target}`);
-    const rel = file.target.slice(2);
-    const root = rel.startsWith('.claude/') ? REPO : APP;
+    const [root, rel] = file.target?.startsWith('@components/')
+      ? [COMPONENTS, file.target.slice('@components/'.length)]
+      : file.target?.startsWith('~/.claude/')
+        ? [REPO, file.target.slice(2)]
+        : [];
+    if (!root) throw new Error(`${item.name}: unexpected target ${file.target}`);
     const out = resolve(root, rel);
     if (!out.startsWith(root)) throw new Error(`${item.name}: target escapes project: ${file.target}`);
     mkdirSync(dirname(out), { recursive: true });

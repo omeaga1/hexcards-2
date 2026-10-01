@@ -1,0 +1,42 @@
+import roleData from './roles.json';
+
+// Which roles each champion is actually played in, from high-elo ranked games on the current patch.
+// roles.json is written by `npm run data:roles` (pipeline/src/roles.mjs).
+
+export const ROLES = ['top', 'jungle', 'middle', 'bottom', 'utility'] as const;
+export type Role = (typeof ROLES)[number];
+
+export const ROLE_LABELS: Record<Role, string> = { top: 'Top', jungle: 'Jungle', middle: 'Mid', bottom: 'Bot', utility: 'Support' };
+
+/** Riot's position icons, the same ones the client shows in champ select. */
+export const roleIconUrl = (role: Role) =>
+  `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-${role}.png`;
+
+/** A role counts if at least this share of the champion's games were played there... */
+const MIN_SHARE = 0.1;
+/** ...and it showed up in at least this many games, so one off-role game doesn't tag a champion. */
+const MIN_GAMES = 3;
+
+export interface ChampionRole {
+  role: Role;
+  /** Share of this champion's sampled games played in this role, 0–1. */
+  share: number;
+  games: number;
+}
+
+export const rolesSample = { patch: roleData.patch, games: roleData.games };
+
+const counts = roleData.champions as Record<string, Record<'TOP' | 'JUNGLE' | 'MIDDLE' | 'BOTTOM' | 'UTILITY', number>>;
+
+/** The roles a champion is played in, most played first. Empty if it wasn't seen in the sample. */
+export function championRoles(championId: number): ChampionRole[] {
+  const row = counts[championId];
+  if (!row) return [];
+  const all = ROLES.map((role) => ({ role, games: row[role.toUpperCase() as keyof typeof row] ?? 0 }));
+  const total = all.reduce((sum, r) => sum + r.games, 0);
+  if (total === 0) return [];
+  const withShare = all.map((r) => ({ ...r, share: r.games / total })).sort((a, b) => b.games - a.games);
+  const tagged = withShare.filter((r) => r.share >= MIN_SHARE && r.games >= MIN_GAMES);
+  // Rarely played champions may not clear the bar anywhere: keep their most played role.
+  return tagged.length > 0 ? tagged : withShare.slice(0, 1);
+}

@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, type AnimationPlaybackControls } from "motion/react";
-import { motionTokens } from "@/lib/motion-tokens";
+import { motionTokens } from "../lib/motion-tokens";
 import styles from "./skeleton.module.css";
 
 export interface SkeletonProps {
