@@ -1,8 +1,9 @@
 # Keeps builds current: collects ranked games through the patch, rebuilds every rank bracket, and
 # publishes to GitHub Pages, where the app reads them.
 #
-# Collected games are kept as assets on a "data-<patch>" release (gzipped NDJSON per bracket), so
-# each run picks up where the last one stopped. A new patch starts a new release.
+# Collected games are kept as encrypted assets on a "data-<patch>" release (one per bracket, see
+# pipeline/data-release.sh), so each run picks up where the last one stopped and the raw per-game
+# records stay private. A new patch starts a new release.
 
 name: Data
 
@@ -35,6 +36,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+      DATA_KEY: ${{ secrets.DATA_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,15 +54,7 @@ jobs:
           echo "patch=$(echo "$version" | cut -d. -f1-2)" >> "$GITHUB_OUTPUT"
 
       - name: Restore collected games
-        run: |
-          mkdir -p "pipeline/data/${{ steps.patch.outputs.patch }}"
-          cd "pipeline/data/${{ steps.patch.outputs.patch }}"
-          if gh release download "data-${{ steps.patch.outputs.patch }}" --pattern '*.ndjson.gz' --repo "$GITHUB_REPOSITORY"; then
-            gunzip -f *.ndjson.gz
-            wc -l *.ndjson
-          else
-            echo "No games yet for patch ${{ steps.patch.outputs.patch }}; starting fresh."
-          fi
+        run: bash pipeline/data-release.sh restore "${{ steps.patch.outputs.patch }}"
 
       - name: Collect
         # Collection stopping early (key expired, Riot outage) shouldn't block publishing what we have.
@@ -68,15 +62,7 @@ jobs:
         run: node pipeline/src/collect.mjs --per-region 4000 --minutes "${{ inputs.minutes || '300' }}"
 
       - name: Save collected games
-        run: |
-          patch="${{ steps.patch.outputs.patch }}"
-          cd "pipeline/data/$patch"
-          gzip -kf *.ndjson
-          gh release view "data-$patch" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
-            gh release create "data-$patch" --repo "$GITHUB_REPOSITORY" --prerelease \
-              --title "Collected games, patch $patch" \
-              --notes "Ranked solo games collected by the Data workflow, one gzipped NDJSON file per rank bracket. Used to build the published builds; not an app release."
-          gh release upload "data-$patch" *.ndjson.gz --clobber --repo "$GITHUB_REPOSITORY"
+        run: bash pipeline/data-release.sh save "${{ steps.patch.outputs.patch }}"
 
       - name: Build
         run: |

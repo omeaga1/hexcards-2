@@ -15,7 +15,9 @@
     "arc:add": "node scripts/arc-add.mjs",
     "app": "npm run tauri -w @hexcards/desktop -- dev",
     "data:collect": "node pipeline/src/collect.mjs",
-    "data:build": "tsx pipeline/src/build.ts"
+    "data:build": "tsx pipeline/src/build.ts",
+    "data:pull": "bash pipeline/data-release.sh restore",
+    "data:push": "bash pipeline/data-release.sh save"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
