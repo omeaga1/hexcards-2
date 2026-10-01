@@ -17,3 +17,6 @@ pipeline/data/
 # Generated builds (published to GitHub Pages)
 apps/desktop/public/builds/
 !apps/desktop/.env.production
+
+# Local landing page preview (assembled like the published site)
+.site-preview/

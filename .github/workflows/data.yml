@@ -67,8 +67,10 @@ jobs:
       - name: Build
         run: |
           npx tsx pipeline/src/build.ts --out site/builds
-          # Static files served at the site root, e.g. riot.txt for Riot's product URL verification.
+          # The landing page and static files (riot.txt for Riot's product URL verification), with the
+          # app's Arc design tokens so the site and app look the same.
           cp -r pages/. site/
+          cp apps/desktop/src/components/arc/foundation.css site/foundation.css
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-accent="violet">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hex Cards</title>
+    <meta name="description" content="A free League of Legends companion that builds from real ranked games at your rank and imports runes, item sets and spells into the client." />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+    <!-- The app's Arc design tokens, copied in when the site is published. -->
+    <link rel="stylesheet" href="foundation.css" />
+    <style>
+      :root { --font-geist: "Geist"; --font-inter: "Inter"; }
+      *, *::before, *::after { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-body);
+        font-size: var(--text-base);
+        line-height: var(--leading-body);
+        -webkit-font-smoothing: antialiased;
+      }
+      h1, h2, h3 { margin: 0; font-family: var(--font-display); font-weight: 500; line-height: var(--leading-display); }
+      p { margin: 0; }
+      a { color: inherit; }
+
+      .page { max-width: 70rem; margin: 0 auto; padding: 0 var(--space-6); }
+      header.top { display: flex; align-items: center; justify-content: space-between; padding: var(--space-6) 0; }
+      .brand { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-display); font-weight: 500; text-decoration: none; }
+      .brand img { width: var(--space-6); height: var(--space-6); }
+      .top a.link { color: var(--text-secondary); text-decoration: none; font-size: var(--text-sm); }
+      .top a.link:hover { color: var(--foreground); }
+
+      .hero { padding: var(--space-16) 0 var(--space-12); display: grid; gap: var(--space-6); max-width: 46rem; }
+      .hero h1 { font-size: clamp(var(--text-2xl), 5vw, 3.25rem); letter-spacing: -0.01em; }
+      .hero p { font-size: var(--text-lg); color: var(--text-secondary); }
+      .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+      .button {
+        display: inline-flex; align-items: center; height: 2.75rem; padding: 0 var(--space-5);
+        border-radius: var(--radius-control); text-decoration: none; font-size: var(--text-sm); font-weight: 500;
+        border: 1px solid var(--border); color: var(--foreground);
+        transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+      }
+      .button:hover { background: var(--surface-muted); border-color: var(--border-strong); }
+      .button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-foreground); }
+      .button.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+      .note { font-size: var(--text-sm); color: var(--text-muted); }
+
+      .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--space-6); padding: var(--space-6) 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+      .stat { display: grid; gap: var(--space-1); }
+      .stat strong { font-family: var(--font-display); font-weight: 500; font-size: var(--text-2xl); font-variant-numeric: tabular-nums; }
+      .stat span { font-size: var(--text-sm); color: var(--text-secondary); }
+
+      figure { margin: 0; }
+      .shot { border: 1px solid var(--border); border-radius: var(--radius-surface); overflow: hidden; background: var(--surface-raised); }
+      .shot img { display: block; width: 100%; height: auto; }
+      figcaption { margin-top: var(--space-3); font-size: var(--text-sm); color: var(--text-muted); }
+      .lead { padding: var(--space-12) 0; }
+
+      section.block { padding: var(--space-16) 0; display: grid; gap: var(--space-8); border-top: 1px solid var(--border); }
+      section.block > h2 { font-size: var(--text-2xl); }
+      .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--space-8); }
+      .feature { display: grid; gap: var(--space-2); align-content: start; }
+      .feature h3 { font-size: var(--text-lg); }
+      .feature p { color: var(--text-secondary); }
+      .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: var(--space-8); align-items: start; }
+
+      dl.facts { margin: 0; display: grid; gap: var(--space-4); }
+      dl.facts div { display: grid; gap: var(--space-1); }
+      dl.facts dt { font-weight: 500; }
+      dl.facts dd { margin: 0; color: var(--text-secondary); }
+
+      pre { margin: 0; padding: var(--space-4) var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface-muted); overflow-x: auto; font-size: var(--text-sm); }
+
+      footer { padding: var(--space-12) 0 var(--space-16); border-top: 1px solid var(--border); display: grid; gap: var(--space-3); }
+      footer p { font-size: var(--text-xs); color: var(--text-muted); max-width: 46rem; }
+
+      @media (max-width: 640px) {
+        .page { padding: 0 var(--space-4); }
+        .hero { padding: var(--space-10) 0 var(--space-8); }
+        section.block { padding: var(--space-12) 0; }
+      }
+      @media (prefers-reduced-motion: reduce) { .button { transition: none; } }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="top">
+        <a class="brand" href="./"><img src="icon.svg" alt="" />Hex Cards</a>
+        <a class="link" href="https://github.com/omeaga1/hexcards-2">Source on GitHub</a>
+      </header>
+
+      <main>
+        <section class="hero">
+          <h1>Builds from real ranked games, sent straight to your client.</h1>
+          <p>
+            Hex Cards is a free League of Legends companion for Windows. It gives every champion 1 to 3 builds from games at your rank,
+            lights up the item swaps that matter against the enemy team in champ select, and imports runes, item sets and spells into
+            the League client.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="https://github.com/omeaga1/hexcards-2">View on GitHub</a>
+            <a class="button" href="#source">Run it from source</a>
+          </div>
+          <p class="note">A Windows installer is coming. Until then you can run it from source.</p>
+        </section>
+
+        <div class="stats" id="stats" aria-live="polite">
+          <div class="stat"><strong id="stat-patch">16.19</strong><span>Current patch</span></div>
+          <div class="stat"><strong id="stat-games">7,000+</strong><span>Ranked games this patch</span></div>
+          <div class="stat"><strong id="stat-champions">160+</strong><span>Champions with builds</span></div>
+          <div class="stat"><strong>Every 6 hours</strong><span>Builds refresh</span></div>
+        </div>
+
+        <figure class="lead">
+          <div class="shot"><img src="screenshots/build.jpg" alt="Hex Cards showing Lee Sin's Bruiser and Lethality builds, with the rune page, a level 1 to 18 skill order and the item path." width="800" height="505" /></div>
+          <figcaption>Each build bundles its rune page, skill order and items, with how often it's played and how often it wins.</figcaption>
+        </figure>
+
+        <section class="block" aria-labelledby="what">
+          <h2 id="what">What it does</h2>
+          <div class="features">
+            <div class="feature">
+              <h3>Builds by rank</h3>
+              <p>Builds, tier lists and roles are worked out separately for Iron to Silver, Gold to Emerald, and Diamond and above, so what you see fits the games you play.</p>
+            </div>
+            <div class="feature">
+              <h3>Swaps for this game</h3>
+              <p>Each build lists the items players buy more, and win with, against specific team comps: anti-heal against healers, magic resist against AP-heavy teams. In champ select they light up for the enemy picks you see.</p>
+            </div>
+            <div class="feature">
+              <h3>Imports that just work</h3>
+              <p>One click sets your rune page, adds item sets for every build and picks your spells, with Flash on D or F. Hex Cards only edits the pages and sets it created and never deletes yours.</p>
+            </div>
+          </div>
+          <div class="split">
+            <figure>
+              <div class="shot"><img src="screenshots/swap.jpg" alt="Lee Sin's item path with Maw of Malmortius swapped in against a mostly AP team, with when to buy it and the evidence." width="800" height="479" loading="lazy" /></div>
+              <figcaption>A swap replaces the item it's meant for and says when to buy it and what backs it up.</figcaption>
+            </figure>
+            <figure>
+              <div class="shot"><img src="screenshots/tiers.jpg" alt="A Mid lane tier list from S to D with win and pick rates." width="800" height="479" loading="lazy" /></div>
+              <figcaption>Tier lists per role, ranked by win rate adjusted for how many games each champion has.</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section class="block" aria-labelledby="data">
+          <h2 id="data">Where the numbers come from</h2>
+          <div class="split">
+            <dl class="facts">
+              <div>
+                <dt>Ranked solo games on the current patch</dt>
+                <dd>Players are drawn from Riot's ranked ladders in North America, Europe West and Korea, across three rank brackets. Each game's match data and timeline give the runes, item purchases with timing, skill order and result.</dd>
+              </div>
+              <div>
+                <dt>Grouped into real builds</dt>
+                <dd>Games are grouped by the kind of items bought, so a champion's Bruiser and Lethality builds each get their own runes and skills from the same games. Every rune page is checked against the current patch before it's published.</dd>
+              </div>
+              <div>
+                <dt>Refreshed through the patch</dt>
+                <dd>A scheduled job keeps collecting and republishes builds every 6 hours.</dd>
+              </div>
+            </dl>
+            <dl class="facts">
+              <div>
+                <dt>Only statistics are published</dt>
+                <dd>Builds, tier lists and roles are aggregates. Raw match data is encrypted and kept for processing only. No player names, Riot IDs or match histories are stored or shown.</dd>
+              </div>
+              <div>
+                <dt>Only what the client already shows you</dt>
+                <dd>The app reads your own champ select from the League client on your PC: your pick, your role and the champions visible on both teams. It doesn't reveal hidden names, give in-game timers or automate anything.</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        <section class="block" aria-labelledby="source">
+          <h2 id="source">Run it from source</h2>
+          <p class="note">Needs Node.js, Rust and the Microsoft C++ Build Tools on Windows.</p>
+<pre><code>git clone https://github.com/omeaga1/hexcards-2.git
+cd hexcards-2
+npm install
+npm run app</code></pre>
+        </section>
+      </main>
+
+      <footer>
+        <p>Hex Cards isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>
+        <p>Builds are published at <a href="builds/latest.json">builds/latest.json</a>.</p>
+      </footer>
+    </div>
+
+    <script>
+      // Live numbers from the published builds; the page reads fine with the defaults if this fails.
+      (async () => {
+        try {
+          const latest = await (await fetch('builds/latest.json')).json();
+          const games = Object.values(latest.brackets).reduce((sum, n) => sum + n, 0);
+          document.getElementById('stat-patch').textContent = latest.patch;
+          document.getElementById('stat-games').textContent = games.toLocaleString('en-US');
+          const best = Object.entries(latest.brackets).sort((a, b) => b[1] - a[1])[0];
+          if (best) {
+            const index = await (await fetch(`builds/${latest.patch}/${best[0]}/index.json`)).json();
+            document.getElementById('stat-champions').textContent = String(Object.keys(index.champions).length);
+          }
+        } catch {
+          // Keep the defaults.
+        }
+      })();
+    </script>
+  </body>
+</html>
