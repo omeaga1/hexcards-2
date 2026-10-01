@@ -1,5 +1,8 @@
-// Counts which role each champion is played in, from high-elo ranked solo games on the current patch.
-// Writes packages/data/src/roles.json, which the app uses to tag and filter champions by role.
+// Counts, per champion and role, games played and won, plus bans, from high-elo ranked solo games
+// on the current patch. Writes packages/data/src/roles.json, which the app uses to tag champions by
+// role and build tier lists.
+//
+// Format: champions[id] = { bans, roles: { TOP: [games, wins], ... } }
 //
 //   node pipeline/src/roles.mjs [matchesPerRegion=800]
 
@@ -14,8 +17,12 @@ const riot = new RiotClient(riotKeyFromEnv());
 const patch = await currentPatch();
 console.log(`Patch ${patch}: sampling ${MATCHES_PER_REGION} matches in each of ${REGIONS.map((r) => r.platform).join(', ')}`);
 
-/** championId → { TOP: n, JUNGLE: n, ... } */
+/** championId → { bans, roles: { TOP: [games, wins], ... } } */
 const counts = new Map();
+const rowFor = (id) => {
+  if (!counts.has(id)) counts.set(id, { bans: 0, roles: Object.fromEntries(POSITIONS.map((pos) => [pos, [0, 0]])) });
+  return counts.get(id);
+};
 let games = 0;
 
 async function sampleRegion({ platform, regional }) {
@@ -41,10 +48,13 @@ async function sampleRegion({ platform, regional }) {
       if (match.info.gameDuration < 300) continue;
       for (const p of match.info.participants) {
         if (!POSITIONS.includes(p.teamPosition)) continue;
-        const row = counts.get(p.championId) ?? Object.fromEntries(POSITIONS.map((pos) => [pos, 0]));
-        row[p.teamPosition]++;
-        counts.set(p.championId, row);
+        const cell = rowFor(p.championId).roles[p.teamPosition];
+        cell[0]++;
+        if (p.win) cell[1]++;
       }
+      // A champion can be banned by both teams in one game; count it once per game.
+      const banned = new Set(match.info.teams.flatMap((t) => t.bans.map((b) => b.championId)).filter((id) => id > 0));
+      for (const id of banned) rowFor(id).bans++;
       regionGames++;
       games++;
       if (regionGames % 50 === 0) console.log(`  ${platform}: ${regionGames} matches`);

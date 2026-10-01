@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SearchField } from './arc/search-field/search-field';
+import SegmentedControl from './arc/segmented-control/segmented-control';
+import { Switch } from './arc/switch/switch';
 import {
-  ROLES, ROLE_LABELS, championIconUrl, championRoles, championSplashUrl, championTileUrl, roleIconUrl, rolePickRate, rolesSample,
+  ROLES, ROLE_LABELS, championIconUrl, championRoles, championSplashUrl, championTileUrl, roleIconUrl, rolePickRate, roleStats, rolesSample,
   type ChampionInfo, type Role,
 } from '@hexcards/data';
+import { buildTierList } from '@hexcards/engine';
+import { settings } from '../lcu/settings';
+import { TierList } from './TierList';
 import styles from './ChampionBrowser.module.css';
 
 /** "Kha'Zix", "Nunu & Willump", "Renata Glasc" all match loose typing like "khazix" or "nunu". */
@@ -31,7 +36,24 @@ type RoleFilter = Role | 'all';
 export function ChampionBrowser({ version, champions, featured, recent, hasBuild, onSelect }: ChampionBrowserProps) {
   const [query, setQuery] = useState('');
   const [role, setRole] = useState<RoleFilter>('all');
+  const [view, setView] = useState<'tiers' | 'grid'>('tiers');
+  const [showRoleIcons, setShowRoleIcons] = useState(true);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // Saved preferences are read after mount: storage isn't available during the first render everywhere.
+  useEffect(() => {
+    setView(settings.roleView());
+    setShowRoleIcons(settings.showRoleIcons());
+  }, []);
+
+  const byId = useMemo(() => new Map(champions.map((c) => [c.id, c])), [champions]);
+  // Only champions tagged for the role (the same set the grid shows), so one-off off-role games
+  // don't land in the tier list.
+  const tierList = useMemo(
+    () => (role === 'all' ? null : buildTierList(roleStats(role).filter((s) => championRoles(s.championId).some((r) => r.role === role)))),
+    [role],
+  );
+  const showTiers = role !== 'all' && view === 'tiers' && !query;
 
   const sorted = useMemo(() => [...champions].sort((a, b) => a.name.localeCompare(b.name)), [champions]);
   const playsRole = (c: ChampionInfo, r: Role) => championRoles(c.id).some((x) => x.role === r);
@@ -76,7 +98,7 @@ export function ChampionBrowser({ version, champions, featured, recent, hasBuild
         </span>
         <span className={styles.tileName}>{c.name}</span>
         <span className={styles.tileMeta}>
-          {championRoles(c.id).map((r, i) => (
+          {showRoleIcons && championRoles(c.id).map((r, i) => (
             <img
               key={r.role}
               className={styles.roleIcon}
@@ -132,6 +154,15 @@ export function ChampionBrowser({ version, champions, featured, recent, hasBuild
           </div>
         )}
 
+        <Switch
+          label="Role icons on champions"
+          checked={showRoleIcons}
+          onCheckedChange={(on) => {
+            setShowRoleIcons(on);
+            settings.setShowRoleIcons(on);
+          }}
+        />
+
         <p className={styles.caption}>
           Roles from {rolesSample.games.toLocaleString()} Challenger and Grandmaster games on patch {rolesSample.patch}.
         </p>
@@ -139,14 +170,30 @@ export function ChampionBrowser({ version, champions, featured, recent, hasBuild
 
       <div className={styles.content}>
         <header className={styles.head}>
-          <h1 className={styles.title}>{role === 'all' ? 'Champions' : ROLE_LABELS[role]}</h1>
-          <p className={styles.subtitle}>
-            {query
-              ? `${matches.length} ${matches.length === 1 ? 'match' : 'matches'} for "${query}"`
-              : role === 'all'
-                ? 'Grouped by main role'
-                : 'Most picked first'}
-          </p>
+          <div>
+            <h1 className={styles.title}>{role === 'all' ? 'Champions' : ROLE_LABELS[role]}</h1>
+            <p className={styles.subtitle}>
+              {query
+                ? `${matches.length} ${matches.length === 1 ? 'match' : 'matches'} for "${query}"`
+                : role === 'all'
+                  ? 'Grouped by main role'
+                  : showTiers
+                    ? 'Ranked by win rate, adjusted for how many games each champion has. Top 10% are S tier.'
+                    : 'Most picked first'}
+            </p>
+          </div>
+          {role !== 'all' && !query && (
+            <SegmentedControl
+              label="View"
+              value={view}
+              onValueChange={(v) => {
+                const next = v === 'grid' ? 'grid' : 'tiers';
+                setView(next);
+                settings.setRoleView(next);
+              }}
+              options={[{ value: 'tiers', label: 'Tier list' }, { value: 'grid', label: 'Most picked' }]}
+            />
+          )}
         </header>
 
         {sections && featured.length > 0 && (
@@ -168,7 +215,9 @@ export function ChampionBrowser({ version, champions, featured, recent, hasBuild
           </section>
         )}
 
-        {sections ? (
+        {showTiers && tierList ? (
+          <TierList role={role as Role} list={tierList} champions={byId} hasBuild={hasBuild} onSelect={onSelect} />
+        ) : sections ? (
           sections.map((s) => (
             <section key={s.role ?? 'unseen'} className={styles.section} aria-labelledby={`role-${s.role ?? 'unseen'}`}>
               <h2 id={`role-${s.role ?? 'unseen'}`} className={styles.sectionTitle}>

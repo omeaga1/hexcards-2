@@ -33,4 +33,8 @@ export const settings = {
     }
   },
   setRecentChampions: (ids: number[]) => write('hexcards.recent', JSON.stringify(ids)),
+  showRoleIcons: (): boolean => read('hexcards.showRoleIcons') !== 'false',
+  setShowRoleIcons: (on: boolean) => write('hexcards.showRoleIcons', String(on)),
+  roleView: (): 'tiers' | 'grid' => (read('hexcards.roleView') === 'grid' ? 'grid' : 'tiers'),
+  setRoleView: (view: 'tiers' | 'grid') => write('hexcards.roleView', view),
 };

@@ -1,0 +1,134 @@
+.list {
+  display: grid;
+}
+
+/* One row per tier: the letter on the left, champions wrapping to the right. Rows share hairlines. */
+.tier {
+  display: grid;
+  grid-template-columns: var(--space-16) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+  padding: var(--space-5) 0;
+  border-top: 1px solid var(--border);
+}
+.tier:last-of-type { border-bottom: 1px solid var(--border); }
+
+.letter {
+  height: var(--space-16);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-panel);
+  background: var(--surface-muted);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--text-3xl);
+  color: var(--text-secondary);
+}
+/* Only S takes the accent; lower tiers step down in contrast. */
+.letter[data-tier="S"] { background: var(--accent-subtle); color: var(--accent-strong); }
+.letter[data-tier="A"] { color: var(--foreground); }
+.letter[data-tier="D"] { color: var(--text-muted); }
+
+.entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: var(--space-2);
+}
+
+.entry {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-panel);
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+}
+.entry:hover { background: var(--surface-muted); border-color: var(--border); }
+
+.art {
+  width: var(--space-12);
+  height: var(--space-12);
+  flex: none;
+  border-radius: var(--space-3);
+  border: 1px solid var(--border);
+  object-fit: cover;
+}
+
+.text {
+  display: grid;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ready {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: var(--text-xs);
+}
+
+.stats {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.none {
+  margin: 0;
+  align-self: center;
+  color: var(--text-muted);
+}
+
+.lowSample {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-8);
+}
+
+.lowTitle { font-size: var(--text-base); }
+
+.caption {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.card {
+  margin: 0;
+  display: grid;
+  gap: var(--space-1);
+  min-width: 11rem;
+}
+.card div { display: flex; justify-content: space-between; gap: var(--space-4); }
+.card dt { color: var(--text-secondary); font-size: var(--text-xs); }
+.card dd { margin: 0; font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.cardTitle { font-weight: 500; margin-bottom: var(--space-1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .entry { transition: none; }
+}
+
+@media (max-width: 640px) {
+  .tier { grid-template-columns: var(--space-12) minmax(0, 1fr); gap: var(--space-3); }
+  .letter { height: var(--space-12); font-size: var(--text-2xl); }
+}
