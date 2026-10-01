@@ -79,7 +79,10 @@ jobs:
           gh release upload "data-$patch" *.ndjson.gz --clobber --repo "$GITHUB_REPOSITORY"
 
       - name: Build
-        run: npx tsx pipeline/src/build.ts --out site/builds
+        run: |
+          npx tsx pipeline/src/build.ts --out site/builds
+          # Static files served at the site root, e.g. riot.txt for Riot's product URL verification.
+          cp -r pages/. site/
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
