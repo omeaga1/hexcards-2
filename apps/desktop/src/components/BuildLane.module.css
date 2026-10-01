@@ -10,7 +10,8 @@
   padding: var(--space-4) 0 var(--space-2);
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(8.5rem, 1fr);
+  /* Columns share the width and shrink before the lane scrolls sideways. */
+  grid-auto-columns: minmax(7rem, 1fr);
   gap: var(--space-4);
   overflow-x: auto;
 }
@@ -101,6 +102,7 @@
 
 .altRow {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 

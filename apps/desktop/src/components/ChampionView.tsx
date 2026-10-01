@@ -112,15 +112,15 @@ export function ChampionView({ version, items, runes, champion, source, preferre
       ) : builds.status === 'error' ? (
         <p className={styles.note}>Couldn't load {champion.name}'s builds. ({builds.message})</p>
       ) : current ? (
-        <Builds key={current.role} version={version} items={items} runes={runes} abilities={abilities} builds={current} matchup={matchup} connected={connected} inChampSelect={inChampSelect} />
+        <Builds key={current.role} version={version} items={items} runes={runes} abilities={abilities} builds={current} championName={champion.name} matchup={matchup} connected={connected} inChampSelect={inChampSelect} />
       ) : null}
     </div>
   );
 }
 
-type BuildsProps = Omit<ChampionViewProps, 'champion' | 'onBack' | 'source' | 'preferredRole'> & { builds: ChampionBuilds; abilities: AbilityInfo[] | null };
+type BuildsProps = Omit<ChampionViewProps, 'champion' | 'onBack' | 'source' | 'preferredRole'> & { builds: ChampionBuilds; championName: string; abilities: AbilityInfo[] | null };
 
-function Builds({ version, items, runes, abilities, builds, matchup, connected, inChampSelect }: BuildsProps) {
+function Builds({ version, items, runes, abilities, builds, championName, matchup, connected, inChampSelect }: BuildsProps) {
   const [variantId, setVariantId] = useState(builds.variants[0]!.id);
   const [traits, setTraits] = useState<Set<Trait>>(new Set());
   // In champ select, the teams decide which swaps light up, and update as picks lock in.
@@ -152,7 +152,8 @@ function Builds({ version, items, runes, abilities, builds, matchup, connected, 
           onValueChange={setVariantId}
           options={builds.variants.map((v) => ({
             value: v.id,
-            label: v.label,
+            // The page is already about this champion, so "Caitlyn Crit: The Collector" reads "Crit: The Collector".
+            label: v.label.startsWith(`${championName} `) ? v.label.slice(championName.length + 1) : v.label,
             description: `${(v.stats.winRate * 100).toFixed(1)}% win rate · played in ${percent(v.stats.pickShare)} of ${v.stats.games.toLocaleString()} games`,
           }))}
         />

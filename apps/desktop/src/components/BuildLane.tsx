@@ -19,6 +19,9 @@ const STAGES: Stage[] = [
 // Start and first back are bought together, so every item there is shown at full size.
 const BOUGHT_TOGETHER: Slot[] = ['start', 'first-back'];
 
+/** "Also built" items shown under each stage's main item. */
+const MAX_ALTERNATIVES = 3;
+
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 const signedPercent = (delta: number) => `${delta >= 0 ? '+' : ''}${(delta * 100).toFixed(1)}%`;
 const BOOTS: Stage = { label: 'Boots', slots: ['boots'] };
@@ -49,6 +52,25 @@ interface BuildLaneProps {
 
 export function BuildLane({ version, variant, items, activeSwaps }: BuildLaneProps) {
   const commonFor = (slot: Slot) => variant.slots.find((s) => s.slot === slot)?.common ?? [];
+  // Items already on the core path; the late column only shows what comes after them.
+  const coreMains = new Set(['core-1', 'core-2', 'core-3'].map((s) => commonFor(s as Slot)[0]?.itemId));
+
+  /**
+   * A stage's items, most built first, at most one main plus MAX_ALTERNATIVES. The late stage merges
+   * slots 4 to 6, keeps each item once at its highest share, and leaves out the core items.
+   */
+  const stageItems = (stage: Stage) => {
+    if (stage.slots.length === 1) {
+      const items = commonFor(stage.slots[0]!);
+      return BOUGHT_TOGETHER.includes(stage.slots[0]!) ? items : items.slice(0, MAX_ALTERNATIVES + 1);
+    }
+    const best = new Map<number, ReturnType<typeof commonFor>[number]>();
+    for (const c of stage.slots.flatMap(commonFor)) {
+      if (coreMains.has(c.itemId)) continue;
+      if ((best.get(c.itemId)?.share ?? 0) < c.share) best.set(c.itemId, c);
+    }
+    return [...best.values()].sort((a, b) => b.share - a.share).slice(0, MAX_ALTERNATIVES + 1);
+  };
   const nameOf = (id: number) => items.get(id)?.name ?? `Item ${id}`;
   const swapsByLit = [...variant.swaps].sort((a, b) => Number(activeSwaps.includes(b)) - Number(activeSwaps.includes(a)));
 
@@ -56,7 +78,7 @@ export function BuildLane({ version, variant, items, activeSwaps }: BuildLanePro
     <div className={styles.root}>
       <ol className={styles.lane} aria-label="Build order">
         {stagesFor(variant).map((stage) => {
-          const common = stage.slots.flatMap(commonFor);
+          const common = stageItems(stage);
           if (common.length === 0) return null;
           const together = stage.slots.some((slot) => BOUGHT_TOGETHER.includes(slot));
           const [main, ...alternatives] = common;
