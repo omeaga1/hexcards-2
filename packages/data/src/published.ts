@@ -4,6 +4,7 @@ import type { RoleData } from './roles';
 
 // What the pipeline (pipeline/src/build.ts) publishes:
 //   <base>/latest.json                            current patch and which brackets have data
+//   <base>/<patch>/traits.json                    champion traits (healer, tank, ...) for tagging teams
 //   <base>/<patch>/<bracket>/index.json           which champions have builds, in which roles
 //   <base>/<patch>/<bracket>/roles.json           role games, wins and bans (tags and tier lists)
 //   <base>/<patch>/<bracket>/<ChampionKey>.json   every role's builds for one champion
@@ -56,3 +57,7 @@ export const loadRoleData = async (base: string, patch: string, bracket: Bracket
 export async function loadChampionBuilds(base: string, patch: string, bracket: Bracket, championKey: string): Promise<ChampionBuilds[]> {
   return ChampionFile.parse(await getJson(`${base}/${patch}/${bracket}/${championKey}.json`)).roles;
 }
+
+/** champion ID → traits ("ap", "ad", "healer", "tank", "shielder", "cc"), from what champions do in games. */
+export const loadTraitTable = async (base: string, patch: string) =>
+  (await getJson(`${base}/${patch}/traits.json`)) as Record<string, string[]>;

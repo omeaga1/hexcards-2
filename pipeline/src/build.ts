@@ -5,12 +5,16 @@
 //
 // Reads pipeline/data/<patch>/<bracket>.ndjson and writes, for each bracket with games:
 //   <out>/<patch>/<bracket>/<ChampionKey>.json, index.json and roles.json
+// plus <out>/<patch>/traits.json (champion traits for tagging teams in champ select)
 // and <out>/latest.json listing the patch and each bracket's game count.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BRACKETS, ChampionBuilds, countRoles, type Bracket, type GameRecord, type PerkStyle, type Position } from '@hexcards/data';
-import { ItemCatalog, buildVariants, toBuildGame, type BuildGame, type DDragonItem } from '@hexcards/engine';
+import {
+  ItemCatalog, buildTraitTable, buildVariants, matchupTraits, toBuildGame,
+  type BuildGame, type DDragonItem, type TraitTable,
+} from '@hexcards/engine';
 
 const args = Object.fromEntries(process.argv.slice(2).join(' ').split('--').filter(Boolean).map((a) => a.trim().split(/\s+/)));
 const OUT = args.out ?? 'apps/desktop/public/builds';
@@ -35,7 +39,7 @@ const champions = new Map(Object.values(championJson.data).map((c) => [Number(c.
 const generatedAt = new Date().toISOString();
 const latest: { patch: string; generatedAt: string; brackets: Partial<Record<Bracket, number>> } = { patch, generatedAt, brackets: {} };
 
-function buildBracket(bracket: Bracket, games: GameRecord[]) {
+function buildBracket(bracket: Bracket, games: GameRecord[], traits: TraitTable) {
   const dir = join(OUT, patch, bracket);
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'roles.json'), JSON.stringify(countRoles(patch, games)));
@@ -44,7 +48,9 @@ function buildBracket(bracket: Bracket, games: GameRecord[]) {
   for (const game of games) {
     for (const p of game.players) {
       const key = `${p.champ}:${p.pos}`;
-      (groups.get(key) ?? groups.set(key, []).get(key)!).push(toBuildGame(p, items));
+      const allies = game.players.filter((o) => o.team === p.team && o !== p).map((o) => o.champ);
+      const enemies = game.players.filter((o) => o.team !== p.team).map((o) => o.champ);
+      (groups.get(key) ?? groups.set(key, []).get(key)!).push(toBuildGame(p, items, matchupTraits(traits, allies, enemies)));
     }
   }
 
@@ -76,10 +82,21 @@ function buildBracket(bracket: Bracket, games: GameRecord[]) {
   console.log(`${bracket}: ${games.length} games → ${byChampion.size} champions, ${builds.length} roles, ${builds.reduce((s, r) => s + r.variants.length, 0)} builds`);
 }
 
+const byBracket = new Map<Bracket, GameRecord[]>();
 for (const bracket of BRACKETS) {
   const file = `pipeline/data/${patch}/${bracket}.ndjson`;
   if (!existsSync(file)) continue;
-  const games: GameRecord[] = readFileSync(file, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line));
-  if (games.length > 0) buildBracket(bracket, games);
+  byBracket.set(bracket, readFileSync(file, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)));
 }
+
+// Champion traits come from every bracket together: what a champion does doesn't depend much on
+// rank, and more games make the table steadier.
+const traits = buildTraitTable([...byBracket.values()].flat());
+mkdirSync(join(OUT, patch), { recursive: true });
+writeFileSync(join(OUT, patch, 'traits.json'), JSON.stringify(traits));
+const traitCounts: Record<string, number> = {};
+for (const list of Object.values(traits)) for (const t of list) traitCounts[t] = (traitCounts[t] ?? 0) + 1;
+console.log(`traits: ${Object.keys(traits).length} champions`, traitCounts);
+
+for (const [bracket, games] of byBracket) if (games.length > 0) buildBracket(bracket, games, traits);
 writeFileSync(join(OUT, 'latest.json'), JSON.stringify(latest));

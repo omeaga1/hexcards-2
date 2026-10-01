@@ -4,9 +4,10 @@ import SegmentedControl from './components/arc/segmented-control/segmented-contr
 import { Skeleton } from './components/arc/skeleton/skeleton';
 import {
   BRACKETS, BRACKET_LABELS, BRACKET_RANKS, ROLES, RoleTable, championIconUrl, latestVersion, loadBuildIndex, loadChampions, loadItems,
-  loadLatest, loadRoleData, loadRunes,
+  loadLatest, loadRoleData, loadRunes, loadTraitTable,
   type Bracket, type BuildIndex, type ChampionInfo, type ItemInfo, type Latest, type RuneData,
 } from '@hexcards/data';
+import type { TraitTable } from '@hexcards/engine';
 import { ChampionBrowser } from './components/ChampionBrowser';
 import { settings } from './lcu/settings';
 import { ChampionView } from './components/ChampionView';
@@ -45,6 +46,7 @@ export function App() {
   const [latestError, setLatestError] = useState<string | null>(null);
   const [bracket, setBracket] = useState<Bracket>('pro');
   const [bracketData, setBracketData] = useState<BracketData>({ status: 'loading' });
+  const [traitTable, setTraitTable] = useState<TraitTable | null>(null);
 
   // Read after mount: storage isn't available during the first render in every environment.
   const [recentIds, setRecentIds] = useState<number[]>([]);
@@ -68,7 +70,15 @@ export function App() {
       .then((data) => !cancelled && setGame({ status: 'ready', ...data }))
       .catch((err: Error) => !cancelled && setGame({ status: 'error', message: err.message }));
     loadLatest(BUILDS_BASE)
-      .then((l) => !cancelled && setLatest(l))
+      .then((l) => {
+        if (cancelled) return;
+        setLatest(l);
+        loadTraitTable(BUILDS_BASE, l.patch)
+          .then((t) => !cancelled && setTraitTable(t as TraitTable))
+          .catch(() => {
+            // Without traits, swaps just don't light up automatically.
+          });
+      })
       .catch((err: Error) => !cancelled && setLatestError(err.message));
     loadRunes()
       .then((r) => !cancelled && setRunes(r))
@@ -113,6 +123,14 @@ export function App() {
   const index = bracketData.status === 'ready' ? bracketData.index : null;
   const hasBuild = (id: number) => !!index?.champions[id];
   const pickRole = ROLES.find((r) => r === pick?.role);
+  const session = client.session;
+  const matchup = session && traitTable
+    ? {
+        allies: session.myTeam.filter((p) => p.cellId !== session.localPlayerCellId).map((p) => p.championId || p.championPickIntent).filter((id) => id > 0),
+        enemies: session.theirTeam.map((p) => p.championId).filter((id) => id > 0),
+        traits: traitTable,
+      }
+    : undefined;
 
   // The most played champion roles in this bracket, for the browser's highlight row.
   const popular = index && champions
@@ -197,6 +215,7 @@ export function App() {
             champion={selected}
             source={hasBuild(selected.id) ? { base: BUILDS_BASE, patch: latest.patch, bracket: activeBracket } : null}
             preferredRole={selected.id === pickId ? pickRole : undefined}
+            matchup={selected.id === pickId ? matchup : undefined}
             connected={client.connected}
             inChampSelect={!!client.session}
             onBack={() => setSelectedId(null)}

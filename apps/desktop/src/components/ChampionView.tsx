@@ -9,6 +9,7 @@ import {
   ROLE_LABELS, TRAIT_LABELS, championIconUrl, loadAbilities, loadChampionBuilds,
   type AbilityInfo, type Bracket, type ChampionBuilds, type ChampionInfo, type ItemInfo, type Role, type RuneData, type Trait,
 } from '@hexcards/data';
+import { matchupTraits, type TraitTable } from '@hexcards/engine';
 import { BuildLane } from './BuildLane';
 import { ImportPanel } from './ImportPanel';
 import { RunePage } from './RunePage';
@@ -28,6 +29,8 @@ interface ChampionViewProps {
   source: { base: string; patch: string; bracket: Bracket } | null;
   /** Open this role first if the champion has builds for it (e.g. your champ select position). */
   preferredRole?: Role;
+  /** When this is your champ select pick: the champions on each team, to light up matching swaps. */
+  matchup?: { allies: number[]; enemies: number[]; traits: TraitTable };
   connected: boolean;
   inChampSelect: boolean;
   onBack: () => void;
@@ -35,7 +38,7 @@ interface ChampionViewProps {
 
 type BuildState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; roles: ChampionBuilds[] };
 
-export function ChampionView({ version, items, runes, champion, source, preferredRole, connected, inChampSelect, onBack }: ChampionViewProps) {
+export function ChampionView({ version, items, runes, champion, source, preferredRole, matchup, connected, inChampSelect, onBack }: ChampionViewProps) {
   const [abilities, setAbilities] = useState<AbilityInfo[] | null>(null);
   const [builds, setBuilds] = useState<BuildState>({ status: 'loading' });
   const [role, setRole] = useState<Role | null>(null);
@@ -109,7 +112,7 @@ export function ChampionView({ version, items, runes, champion, source, preferre
       ) : builds.status === 'error' ? (
         <p className={styles.note}>Couldn't load {champion.name}'s builds. ({builds.message})</p>
       ) : current ? (
-        <Builds key={current.role} version={version} items={items} runes={runes} abilities={abilities} builds={current} connected={connected} inChampSelect={inChampSelect} />
+        <Builds key={current.role} version={version} items={items} runes={runes} abilities={abilities} builds={current} matchup={matchup} connected={connected} inChampSelect={inChampSelect} />
       ) : null}
     </div>
   );
@@ -117,9 +120,15 @@ export function ChampionView({ version, items, runes, champion, source, preferre
 
 type BuildsProps = Omit<ChampionViewProps, 'champion' | 'onBack' | 'source' | 'preferredRole'> & { builds: ChampionBuilds; abilities: AbilityInfo[] | null };
 
-function Builds({ version, items, runes, abilities, builds, connected, inChampSelect }: BuildsProps) {
+function Builds({ version, items, runes, abilities, builds, matchup, connected, inChampSelect }: BuildsProps) {
   const [variantId, setVariantId] = useState(builds.variants[0]!.id);
   const [traits, setTraits] = useState<Set<Trait>>(new Set());
+  // In champ select, the teams decide which swaps light up, and update as picks lock in.
+  const allyKey = matchup?.allies.join(',');
+  const enemyKey = matchup?.enemies.join(',');
+  useEffect(() => {
+    if (matchup) setTraits(matchupTraits(matchup.traits, matchup.allies, matchup.enemies));
+  }, [allyKey, enemyKey, matchup?.traits]);
   const variant = builds.variants.find((v) => v.id === variantId) ?? builds.variants[0]!;
   const activeSwaps = useMemo(() => variant.swaps.filter((s) => traits.has(s.trigger)), [variant, traits]);
   const triggers = [...new Set(builds.variants.flatMap((v) => v.swaps.map((s) => s.trigger)))];
@@ -172,7 +181,7 @@ function Builds({ version, items, runes, abilities, builds, connected, inChampSe
         </div>
 
         {triggers.length > 0 && <fieldset className={styles.traits}>
-          <legend className={styles.note}>Try the swaps: pretend this game has</legend>
+          <legend className={styles.note}>{matchup ? 'From this champ select' : 'Try the swaps: pretend this game has'}</legend>
           {triggers.map((trait) => (
             <Switch key={trait} label={TRAIT_LABELS[trait]} checked={traits.has(trait)} onCheckedChange={(on) => toggleTrait(trait, on)} />
           ))}

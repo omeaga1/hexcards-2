@@ -1,5 +1,7 @@
 // What kind of purchase an item is, from Riot's Data Dragon item data.
 
+import type { Trait } from '@hexcards/data';
+
 export interface DDragonItem {
   name: string;
   description?: string;
@@ -39,7 +41,8 @@ export class ItemCatalog {
   /** A finished item that counts toward the core build. Boots are tracked separately. */
   isLegendary(id: number): boolean {
     const item = this.items[id];
-    if (!item || item.tags?.includes('Boots') || item.tags?.includes('Consumable') || item.tags?.includes('Trinket')) return false;
+    if (!item || item.maps?.['11'] === false) return false; // Arena and ARAM-only items
+    if (item.tags?.includes('Boots') || item.tags?.includes('Consumable') || item.tags?.includes('Trinket')) return false;
     return item.gold.total >= LEGENDARY_GOLD && (item.into ?? []).length === 0;
   }
 
@@ -65,6 +68,27 @@ export class ItemCatalog {
   components(id: number): number[] {
     const from = (this.items[id]?.from ?? []).map(Number);
     return [...from, ...from.flatMap((c) => this.components(c))];
+  }
+
+  /**
+   * Team traits this item answers, from Riot's own item text and tags, so a swap always makes sense
+   * for its trigger (anti-heal against healing, magic resist against AP, ...).
+   */
+  counters(id: number): Set<Trait> {
+    const item = this.items[id];
+    const text = (item?.description ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    const tags = new Set(item?.tags ?? []);
+    const out = new Set<Trait>();
+    if (/Grievous Wounds/i.test(text)) out.add('enemy-heavy-healing');
+    if (tags.has('SpellBlock')) out.add('enemy-mostly-ap');
+    if (tags.has('Armor')) out.add('enemy-mostly-ad');
+    // Percent penetration, armor shred, or damage based on the target's health; not lethality.
+    if (/\d+% (Armor|Magic) Penetration/i.test(text) || /reduc\w* .{0,30}Armor/i.test(text) ||/(max(imum)?|current) Health (as )?(bonus )?(magic |physical |true )?damage|(max(imum)?|current) Health as/i.test(text)) {
+      out.add('enemy-tanks-2plus');
+    }
+    if (tags.has('Tenacity') || /crowd control/i.test(text)) out.add('enemy-heavy-cc');
+    if (/Shield Reaver/i.test(text)) out.add('enemy-shields');
+    return out;
   }
 
   profile(id: number): Record<ProfileTag, number> {
