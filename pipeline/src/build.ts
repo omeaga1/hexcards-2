@@ -67,14 +67,18 @@ for (const [key, group] of groups) {
   (byChampion.get(championId) ?? byChampion.set(championId, []).get(championId)!).push(builds);
 }
 
-const index: Record<string, { key: string; roles: { role: string; games: number; variants: number }[] }> = {};
+const index: Record<string, { key: string; roles: { role: string; games: number; variants: string[] }[] }> = {};
 for (const [championId, roles] of byChampion) {
   roles.sort((a, b) => b.variants.reduce((s, v) => s + v.stats.games, 0) - a.variants.reduce((s, v) => s + v.stats.games, 0));
   const key = champions.get(championId)!.key;
   writeFileSync(join(dir, `${key}.json`), JSON.stringify({ patch, championId, championKey: key, roles }));
   index[championId] = {
     key,
-    roles: roles.map((r) => ({ role: r.role, games: r.variants.reduce((s, v) => s + v.stats.games, 0), variants: r.variants.length })),
+    roles: roles.map((r) => ({
+      role: r.role,
+      games: r.variants.reduce((s, v) => s + v.stats.games, 0),
+      variants: r.variants.map((v) => v.label.slice(champions.get(championId)!.name.length + 1)),
+    })),
   };
 }
 const generatedAt = new Date().toISOString();

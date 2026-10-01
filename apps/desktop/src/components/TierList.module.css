@@ -79,14 +79,6 @@
   text-overflow: ellipsis;
 }
 
-.ready {
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: var(--accent-foreground);
-  font-size: var(--text-xs);
-}
-
 .stats {
   font-size: var(--text-xs);
   color: var(--text-secondary);
@@ -132,3 +124,5 @@
   .tier { grid-template-columns: var(--space-12) minmax(0, 1fr); gap: var(--space-3); }
   .letter { height: var(--space-12); font-size: var(--text-2xl); }
 }
+
+.entry[data-no-build] .art { opacity: .4; }

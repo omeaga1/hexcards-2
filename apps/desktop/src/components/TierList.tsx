@@ -30,12 +30,11 @@ export function TierList({ role, list, champions, hasBuild, onSelect }: TierList
             </dl>
           }
         >
-          <button type="button" className={styles.entry} onClick={() => onSelect(e.championId)}>
+          <button type="button" className={styles.entry} data-no-build={!hasBuild(c.id) || undefined} onClick={() => onSelect(e.championId)}>
             <img className={styles.art} src={championTileUrl(c.key)} alt="" loading="lazy" draggable={false} />
             <span className={styles.text}>
               <span className={styles.name}>
                 {c.name}
-                {hasBuild(c.id) && <span className={styles.ready}>Build</span>}
               </span>
               <span className={styles.stats}>
                 {pct(e.winRate)} win · {pct(e.pickRate)} pick

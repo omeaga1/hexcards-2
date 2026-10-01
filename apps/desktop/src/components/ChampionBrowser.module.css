@@ -254,17 +254,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Sits on the art's top edge. A solid fill, not a gradient, so it reads on any splash. */
-.ready {
-  position: absolute;
-  top: var(--space-2);
-  left: var(--space-2);
-  padding: calc(var(--space-1) / 2) var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: var(--accent-foreground);
-  font-size: var(--text-xs);
-}
+/* Champions without a build this patch stay browsable but recede. */
+.tile[data-no-build] .art img { opacity: .4; }
+.tile[data-no-build] .tileName { color: var(--text-muted); }
 
 .empty {
   margin: 0;

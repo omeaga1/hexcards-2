@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from './arc/button/button';
 import { RadioCards } from './arc/radio-cards/radio-cards';
+import SegmentedControl from './arc/segmented-control/segmented-control';
+import { Skeleton } from './arc/skeleton/skeleton';
 import { Switch } from './arc/switch/switch';
 import {
-  TRAIT_LABELS, championIconUrl, loadAbilities,
-  type AbilityInfo, type ChampionBuilds, type ChampionInfo, type ItemInfo, type RuneData, type Trait,
+  ROLE_LABELS, TRAIT_LABELS, championIconUrl, loadAbilities, loadChampionBuilds,
+  type AbilityInfo, type ChampionBuilds, type ChampionInfo, type ItemInfo, type Role, type RuneData, type Trait,
 } from '@hexcards/data';
 import { BuildLane } from './BuildLane';
 import { ImportPanel } from './ImportPanel';
@@ -14,7 +16,6 @@ import { SkillOrder } from './SkillOrder';
 import styles from './ChampionView.module.css';
 
 const SPELL_NAMES: Record<number, string> = { 4: 'Flash', 12: 'Teleport', 14: 'Ignite', 11: 'Smite', 6: 'Ghost', 3: 'Exhaust', 7: 'Heal', 21: 'Barrier', 1: 'Cleanse' };
-const ROLE_NAMES: Record<string, string> = { top: 'Top', jungle: 'Jungle', middle: 'Mid', bottom: 'Bot', utility: 'Support' };
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
 interface ChampionViewProps {
@@ -23,14 +24,40 @@ interface ChampionViewProps {
   /** Null while loading or if CommunityDragon is unreachable. */
   runes: RuneData | null;
   champion: ChampionInfo;
-  builds: ChampionBuilds | undefined;
+  /** Where published builds live, and the current patch. Null when this champion has no builds. */
+  source: { base: string; patch: string } | null;
+  /** Open this role first if the champion has builds for it (e.g. your champ select position). */
+  preferredRole?: Role;
   connected: boolean;
   inChampSelect: boolean;
   onBack: () => void;
 }
 
-export function ChampionView({ version, items, runes, champion, builds, connected, inChampSelect, onBack }: ChampionViewProps) {
+type BuildState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; roles: ChampionBuilds[] };
+
+export function ChampionView({ version, items, runes, champion, source, preferredRole, connected, inChampSelect, onBack }: ChampionViewProps) {
   const [abilities, setAbilities] = useState<AbilityInfo[] | null>(null);
+  const [builds, setBuilds] = useState<BuildState>({ status: 'loading' });
+  const [role, setRole] = useState<Role | null>(null);
+
+  useEffect(() => {
+    if (!source) return;
+    let cancelled = false;
+    setBuilds({ status: 'loading' });
+    loadChampionBuilds(source.base, source.patch, champion.key)
+      .then((roles) => {
+        if (cancelled) return;
+        setBuilds({ status: 'ready', roles });
+        setRole(roles.some((r) => r.role === preferredRole) ? preferredRole! : (roles[0]?.role ?? null));
+      })
+      .catch((err: Error) => !cancelled && setBuilds({ status: 'error', message: err.message }));
+    return () => {
+      cancelled = true;
+    };
+  }, [source?.base, source?.patch, champion.key, preferredRole]);
+
+  const roles = builds.status === 'ready' ? builds.roles : [];
+  const current = roles.find((r) => r.role === role);
   useEffect(() => {
     let cancelled = false;
     loadAbilities(version, champion.key)
@@ -53,29 +80,42 @@ export function ChampionView({ version, items, runes, champion, builds, connecte
         <img className={styles.championIcon} src={championIconUrl(version, champion.key)} alt="" />
         <div>
           <h1 className={styles.title}>{champion.name}</h1>
-          {builds && (
+          {current && (
             <p className={styles.subtitle}>
-              {ROLE_NAMES[builds.role]} · patch {builds.patch}
+              {ROLE_LABELS[current.role]} · patch {current.patch} · {current.variants.reduce((s, v) => s + v.stats.games, 0).toLocaleString()} high-elo games
             </p>
           )}
         </div>
+        {roles.length > 1 && role && (
+          <SegmentedControl
+            className={styles.roleSwitch}
+            label="Role"
+            value={role}
+            onValueChange={(v) => setRole(v as Role)}
+            options={roles.map((r) => ({ value: r.role, label: ROLE_LABELS[r.role] }))}
+          />
+        )}
       </section>
 
-      {builds ? (
-        <Builds version={version} items={items} runes={runes} abilities={abilities} builds={builds} connected={connected} inChampSelect={inChampSelect} />
-      ) : (
+      {!source ? (
         <section className={styles.empty}>
-          <p className={styles.emptyTitle}>No build for {champion.name} yet</p>
+          <p className={styles.emptyTitle}>No build for {champion.name} this patch</p>
           <p className={styles.note}>
-            Builds for every champion come from the data pipeline, which is the next phase. For now only the Jax sample is loaded.
+            {champion.name} wasn't played enough in Master and above for a reliable build yet. Builds appear once a role has 40 games.
           </p>
         </section>
-      )}
+      ) : builds.status === 'loading' ? (
+        <Skeleton label="Loading builds" lines={5} />
+      ) : builds.status === 'error' ? (
+        <p className={styles.note}>Couldn't load {champion.name}'s builds. ({builds.message})</p>
+      ) : current ? (
+        <Builds key={current.role} version={version} items={items} runes={runes} abilities={abilities} builds={current} connected={connected} inChampSelect={inChampSelect} />
+      ) : null}
     </div>
   );
 }
 
-type BuildsProps = Omit<ChampionViewProps, 'champion' | 'onBack' | 'builds'> & { builds: ChampionBuilds; abilities: AbilityInfo[] | null };
+type BuildsProps = Omit<ChampionViewProps, 'champion' | 'onBack' | 'source' | 'preferredRole'> & { builds: ChampionBuilds; abilities: AbilityInfo[] | null };
 
 function Builds({ version, items, runes, abilities, builds, connected, inChampSelect }: BuildsProps) {
   const [variantId, setVariantId] = useState(builds.variants[0]!.id);
@@ -131,12 +171,12 @@ function Builds({ version, items, runes, abilities, builds, connected, inChampSe
           <h2 id="items-heading" className={styles.sectionTitle}>Items</h2>
         </div>
 
-        <fieldset className={styles.traits}>
+        {triggers.length > 0 && <fieldset className={styles.traits}>
           <legend className={styles.note}>Try the swaps: pretend this game has</legend>
           {triggers.map((trait) => (
             <Switch key={trait} label={TRAIT_LABELS[trait]} checked={traits.has(trait)} onCheckedChange={(on) => toggleTrait(trait, on)} />
           ))}
-        </fieldset>
+        </fieldset>}
 
         <BuildLane version={version} variant={variant} items={items} activeSwaps={activeSwaps} />
       </section>

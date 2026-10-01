@@ -13,6 +13,8 @@
   gap: var(--space-4);
 }
 
+.roleSwitch { margin-left: auto; }
+
 .championIcon {
   width: var(--space-16);
   height: var(--space-16);

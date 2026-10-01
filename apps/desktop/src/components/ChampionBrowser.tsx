@@ -92,7 +92,7 @@ export function ChampionBrowser({ version, champions, featured, recent, hasBuild
 
   const tile = (c: ChampionInfo, pickRole?: Role) => (
     <li key={c.id}>
-      <button type="button" className={styles.tile} onClick={() => onSelect(c.id)}>
+      <button type="button" className={styles.tile} data-no-build={!hasBuild(c.id) || undefined} onClick={() => onSelect(c.id)}>
         <span className={styles.art}>
           <img src={championTileUrl(c.key)} alt="" loading="lazy" draggable={false} />
         </span>
@@ -111,7 +111,6 @@ export function ChampionBrowser({ version, champions, featured, recent, hasBuild
           ))}
           {pickRole && <span className={styles.pickRate}>{percent(rolePickRate(c.id, pickRole))} picked</span>}
         </span>
-        {hasBuild(c.id) && <span className={styles.ready}>Build ready</span>}
       </button>
     </li>
   );
@@ -198,7 +197,7 @@ export function ChampionBrowser({ version, champions, featured, recent, hasBuild
 
         {sections && featured.length > 0 && (
           <section className={styles.featured} aria-labelledby="ready-heading">
-            <h2 id="ready-heading" className={styles.sectionTitle}>Builds ready</h2>
+            <h2 id="ready-heading" className={styles.sectionTitle}>Most played this patch</h2>
             <div className={styles.featuredRow}>
               {featured.map((f) => (
                 <button key={f.champion.id} type="button" className={styles.feature} onClick={() => onSelect(f.champion.id)}>
