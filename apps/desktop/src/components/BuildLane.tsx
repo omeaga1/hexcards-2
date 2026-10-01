@@ -13,7 +13,6 @@ const STAGES: Stage[] = [
   { label: 'Core 1', slots: ['core-1'] },
   { label: 'Core 2', slots: ['core-2'] },
   { label: 'Core 3', slots: ['core-3'] },
-  { label: 'Boots', slots: ['boots'] },
   { label: 'Late', slots: ['late-4', 'late-5', 'late-6'] },
 ];
 
@@ -22,7 +21,23 @@ const BOUGHT_TOGETHER: Slot[] = ['start', 'first-back'];
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 const signedPercent = (delta: number) => `${delta >= 0 ? '+' : ''}${(delta * 100).toFixed(1)}%`;
-const stageOf = (slot: Slot) => STAGES.find((s) => s.slots.includes(slot))!;
+const BOOTS: Stage = { label: 'Boots', slots: ['boots'] };
+const stageOf = (slot: Slot) => [...STAGES, BOOTS].find((s) => s.slots.includes(slot))!;
+
+/**
+ * Boots go where players actually finish them: before the first core item that's usually done
+ * later than the boots. Without timing data they sit after Core 1, where most builds finish them.
+ */
+function stagesFor(variant: BuildVariant): Stage[] {
+  const mainMinute = (slot: Slot) => variant.slots.find((s) => s.slot === slot)?.common[0]?.avgMinute;
+  const bootsMinute = mainMinute('boots');
+  const cores = STAGES.filter((s) => s.slots.some((slot) => slot.startsWith('core') || slot.startsWith('late')));
+  const after = bootsMinute === undefined
+    ? cores[0]
+    : [...cores].reverse().find((s) => (mainMinute(s.slots[0]!) ?? Infinity) <= bootsMinute);
+  const at = after ? STAGES.indexOf(after) + 1 : STAGES.findIndex((s) => s.label === 'Core 1');
+  return [...STAGES.slice(0, at), BOOTS, ...STAGES.slice(at)];
+}
 
 interface BuildLaneProps {
   version: string;
@@ -40,7 +55,7 @@ export function BuildLane({ version, variant, items, activeSwaps }: BuildLanePro
   return (
     <div className={styles.root}>
       <ol className={styles.lane} aria-label="Build order">
-        {STAGES.map((stage) => {
+        {stagesFor(variant).map((stage) => {
           const common = stage.slots.flatMap(commonFor);
           if (common.length === 0) return null;
           const together = stage.slots.some((slot) => BOUGHT_TOGETHER.includes(slot));
@@ -79,7 +94,9 @@ export function BuildLane({ version, variant, items, activeSwaps }: BuildLanePro
                   </div>
                   <div className={styles.mainName}>
                     <span>{nameOf(main!.itemId)}</span>
-                    <span className={styles.share}>{percent(main!.share)} of games</span>
+                    <span className={styles.share}>
+                      {percent(main!.share)} of games{main!.avgMinute ? ` · ~${Math.round(main!.avgMinute)} min` : ''}
+                    </span>
                   </div>
                 </>
               )}

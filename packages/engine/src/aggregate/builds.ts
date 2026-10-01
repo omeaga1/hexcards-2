@@ -27,7 +27,7 @@ export interface BuildGame {
   firstBack: number[];
   /** Finished items in the order completed, with the minute each was bought. */
   legendaries: { id: number; minute: number }[];
-  boots: number | null;
+  boots: { id: number; minute: number } | null;
 }
 
 export function toBuildGame(p: GamePlayer, items: ItemCatalog): BuildGame {
@@ -49,7 +49,7 @@ export function toBuildGame(p: GamePlayer, items: ItemCatalog): BuildGame {
     start,
     firstBack,
     legendaries,
-    boots: p.buys.find(([id]) => items.isBoots(id))?.[0] ?? null,
+    boots: ((b) => (b ? { id: b[0], minute: b[1] / 60 } : null))(p.buys.find(([id]) => items.isBoots(id))),
   };
 }
 
@@ -229,8 +229,10 @@ export function buildVariants(games: BuildGame[], ctx: VariantContext): BuildVar
       const items = common(filled.map((g) => g.legendaries[k]!.id), filled.length, minutes);
       if (items.length && filled.length >= Math.max(10, members.length * 0.15)) slots.push({ slot, common: items });
     });
-    const boots = common(members.map((g) => g.boots ?? undefined), members.length);
-    if (boots.length) slots.splice(Math.min(slots.length, 5), 0, { slot: 'boots', common: boots });
+    const bootMinutes = new Map<number, number[]>();
+    for (const g of members) if (g.boots) (bootMinutes.get(g.boots.id) ?? bootMinutes.set(g.boots.id, []).get(g.boots.id)!).push(g.boots.minute);
+    const boots = common(members.map((g) => g.boots?.id), members.length, bootMinutes);
+    if (boots.length) slots.push({ slot: 'boots', common: boots });
 
     const label = labelFor(centroid);
     return {

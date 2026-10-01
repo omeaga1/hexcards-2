@@ -44,7 +44,7 @@ describe('toBuildGame', () => {
     expect(g.firstBack).toEqual([1036, 1001]);
     expect(g.legendaries.map((l) => l.id)).toEqual([3078, 6610, 3053]);
     expect(g.legendaries[0]!.minute).toBe(10);
-    expect(g.boots).toBe(3047);
+    expect(g.boots).toEqual({ id: 3047, minute: 15 });
   });
 });
 
