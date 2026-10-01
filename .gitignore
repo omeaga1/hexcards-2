@@ -16,3 +16,4 @@ pipeline/data/
 
 # Generated builds (published to GitHub Pages)
 apps/desktop/public/builds/
+!apps/desktop/.env.production

@@ -1,0 +1,89 @@
+# Keeps builds current: collects ranked games through the patch, rebuilds every rank bracket, and
+# publishes to GitHub Pages, where the app reads them.
+#
+# Collected games are kept as assets on a "data-<patch>" release (gzipped NDJSON per bracket), so
+# each run picks up where the last one stopped. A new patch starts a new release.
+
+name: Data
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: Minutes to collect before building
+        default: '300'
+
+# One run at a time; a scheduled run waits for the previous one instead of fighting it for the API key.
+concurrency:
+  group: data
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Current patch
+        id: patch
+        run: |
+          version=$(curl -fsS https://ddragon.leagueoflegends.com/api/versions.json | jq -r '.[0]')
+          echo "patch=$(echo "$version" | cut -d. -f1-2)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore collected games
+        run: |
+          mkdir -p "pipeline/data/${{ steps.patch.outputs.patch }}"
+          cd "pipeline/data/${{ steps.patch.outputs.patch }}"
+          if gh release download "data-${{ steps.patch.outputs.patch }}" --pattern '*.ndjson.gz' --repo "$GITHUB_REPOSITORY"; then
+            gunzip -f *.ndjson.gz
+            wc -l *.ndjson
+          else
+            echo "No games yet for patch ${{ steps.patch.outputs.patch }}; starting fresh."
+          fi
+
+      - name: Collect
+        # Collection stopping early (key expired, Riot outage) shouldn't block publishing what we have.
+        continue-on-error: true
+        run: node pipeline/src/collect.mjs --per-region 4000 --minutes "${{ inputs.minutes || '300' }}"
+
+      - name: Save collected games
+        run: |
+          patch="${{ steps.patch.outputs.patch }}"
+          cd "pipeline/data/$patch"
+          gzip -kf *.ndjson
+          gh release view "data-$patch" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "data-$patch" --repo "$GITHUB_REPOSITORY" --prerelease \
+              --title "Collected games, patch $patch" \
+              --notes "Ranked solo games collected by the Data workflow, one gzipped NDJSON file per rank bracket. Used to build the published builds; not an app release."
+          gh release upload "data-$patch" *.ndjson.gz --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Build
+        run: npx tsx pipeline/src/build.ts --out site/builds
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
