@@ -14,7 +14,6 @@
     "test:watch": "vitest",
     "arc:add": "node scripts/arc-add.mjs",
     "app": "npm run tauri -w @hexcards/desktop -- dev",
-    "data:roles": "node pipeline/src/roles.mjs",
     "data:collect": "node pipeline/src/collect.mjs",
     "data:build": "tsx pipeline/src/build.ts"
   },

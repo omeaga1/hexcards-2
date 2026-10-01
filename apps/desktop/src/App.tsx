@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Badge } from './components/arc/badge/badge';
+import SegmentedControl from './components/arc/segmented-control/segmented-control';
 import { Skeleton } from './components/arc/skeleton/skeleton';
 import {
-  ROLES, championIconUrl, latestVersion, loadBuildIndex, loadChampions, loadItems, loadRunes,
-  type BuildIndex, type ChampionInfo, type ItemInfo, type Role, type RuneData,
+  BRACKETS, BRACKET_LABELS, BRACKET_RANKS, ROLES, RoleTable, championIconUrl, latestVersion, loadBuildIndex, loadChampions, loadItems,
+  loadLatest, loadRoleData, loadRunes,
+  type Bracket, type BuildIndex, type ChampionInfo, type ItemInfo, type Latest, type RuneData,
 } from '@hexcards/data';
 import { ChampionBrowser } from './components/ChampionBrowser';
 import { settings } from './lcu/settings';
@@ -18,8 +20,14 @@ type GameData =
   | { status: 'error'; message: string }
   | { status: 'ready'; version: string; items: Map<number, ItemInfo>; champions: Map<number, ChampionInfo> };
 
+/** One rank bracket's published data. */
+type BracketData = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; index: BuildIndex; roles: RoleTable };
+
 /** Published builds: the pipeline's output, served by Vite in development and GitHub Pages in releases. */
 const BUILDS_BASE = (import.meta.env.VITE_BUILDS_URL as string | undefined) ?? '/builds';
+
+/** A bracket needs this many games before it's offered; fewer can't produce builds or tiers. */
+const MIN_BRACKET_GAMES = 500;
 
 /** Your locked or hovered champion in champ select. */
 function myPick(session: ChampSelectSession | null) {
@@ -33,11 +41,17 @@ export function App() {
   const [game, setGame] = useState<GameData>({ status: 'loading' });
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [runes, setRunes] = useState<RuneData | null>(null);
-  const [buildIndex, setBuildIndex] = useState<BuildIndex | null>(null);
-  const [buildIndexError, setBuildIndexError] = useState<string | null>(null);
+  const [latest, setLatest] = useState<Latest | null>(null);
+  const [latestError, setLatestError] = useState<string | null>(null);
+  const [bracket, setBracket] = useState<Bracket>('pro');
+  const [bracketData, setBracketData] = useState<BracketData>({ status: 'loading' });
+
   // Read after mount: storage isn't available during the first render in every environment.
   const [recentIds, setRecentIds] = useState<number[]>([]);
-  useEffect(() => setRecentIds(settings.recentChampions()), []);
+  useEffect(() => {
+    setRecentIds(settings.recentChampions());
+    setBracket(settings.bracket());
+  }, []);
   useEffect(() => {
     if (!selectedId) return;
     setRecentIds((prev) => {
@@ -53,9 +67,9 @@ export function App() {
       .then(async (version) => ({ version, items: await loadItems(version), champions: await loadChampions(version) }))
       .then((data) => !cancelled && setGame({ status: 'ready', ...data }))
       .catch((err: Error) => !cancelled && setGame({ status: 'error', message: err.message }));
-    loadBuildIndex(BUILDS_BASE)
-      .then((i) => !cancelled && setBuildIndex(i))
-      .catch((err: Error) => !cancelled && setBuildIndexError(err.message));
+    loadLatest(BUILDS_BASE)
+      .then((l) => !cancelled && setLatest(l))
+      .catch((err: Error) => !cancelled && setLatestError(err.message));
     loadRunes()
       .then((r) => !cancelled && setRunes(r))
       .catch(() => {
@@ -65,6 +79,25 @@ export function App() {
       cancelled = true;
     };
   }, []);
+
+  const available = useMemo(
+    () => BRACKETS.filter((b) => (latest?.brackets[b] ?? 0) >= MIN_BRACKET_GAMES),
+    [latest],
+  );
+  // Fall back to a bracket that has data if the saved one doesn't yet.
+  const activeBracket: Bracket = available.includes(bracket) ? bracket : (available[available.length - 1] ?? bracket);
+
+  useEffect(() => {
+    if (!latest) return;
+    let cancelled = false;
+    setBracketData({ status: 'loading' });
+    Promise.all([loadBuildIndex(BUILDS_BASE, latest.patch, activeBracket), loadRoleData(BUILDS_BASE, latest.patch, activeBracket)])
+      .then(([index, roleData]) => !cancelled && setBracketData({ status: 'ready', index, roles: new RoleTable(roleData) }))
+      .catch((err: Error) => !cancelled && setBracketData({ status: 'error', message: err.message }));
+    return () => {
+      cancelled = true;
+    };
+  }, [latest, activeBracket]);
 
   // In champ select, follow your pick. You can still browse away; a new pick brings you back.
   const pick = myPick(client.session);
@@ -77,12 +110,13 @@ export function App() {
   const pickedChampion = pickId ? champions?.get(pickId) : undefined;
   const enemies = (client.session?.theirTeam ?? []).map((p) => champions?.get(p.championId)).filter((c): c is ChampionInfo => !!c);
   const selected = selectedId ? champions?.get(selectedId) : undefined;
-  const hasBuild = (id: number) => !!buildIndex?.champions[id];
+  const index = bracketData.status === 'ready' ? bracketData.index : null;
+  const hasBuild = (id: number) => !!index?.champions[id];
   const pickRole = ROLES.find((r) => r === pick?.role);
 
-  // The most played champion roles this patch, for the browser's highlight row.
-  const popular = buildIndex && champions
-    ? Object.entries(buildIndex.champions)
+  // The most played champion roles in this bracket, for the browser's highlight row.
+  const popular = index && champions
+    ? Object.entries(index.champions)
         .flatMap(([id, c]) => c.roles.map((r) => ({ id: Number(id), ...r })))
         .sort((x, y) => y.games - x.games)
         .slice(0, 3)
@@ -92,6 +126,11 @@ export function App() {
         })
     : [];
 
+  const chooseBracket = (b: Bracket) => {
+    setBracket(b);
+    settings.setBracket(b);
+  };
+
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -99,12 +138,20 @@ export function App() {
           Hex Cards
         </button>
         <div className={styles.status}>
-          {buildIndex && (
+          {available.length > 1 && (
+            <SegmentedControl
+              label="Rank"
+              value={activeBracket}
+              onValueChange={(v) => chooseBracket(v as Bracket)}
+              options={available.map((b) => ({ value: b, label: BRACKET_LABELS[b] }))}
+            />
+          )}
+          {index && (
             <Badge tone="neutral" size="sm">
-              Patch {buildIndex.patch} · {buildIndex.games.toLocaleString()} games
+              {BRACKET_RANKS[activeBracket]} · patch {index.patch} · {index.games.toLocaleString()} games
             </Badge>
           )}
-          {buildIndexError && <Badge tone="warning" size="sm">Builds unavailable</Badge>}
+          {latestError && <Badge tone="warning" size="sm">Builds unavailable</Badge>}
           <Badge tone={client.connected ? 'success' : client.available ? 'warning' : 'neutral'} size="sm">
             {client.connected ? 'Connected to League' : client.message}
           </Badge>
@@ -131,19 +178,24 @@ export function App() {
         </section>
       )}
 
-      {game.status === 'loading' && <Skeleton label="Loading champions" lines={6} />}
+      {(game.status === 'loading' || (!latestError && bracketData.status === 'loading')) && <Skeleton label="Loading champions" lines={6} />}
       {game.status === 'error' && (
         <p className={styles.error}>Couldn't load champion and item data from Riot. Check your connection and restart. ({game.message})</p>
       )}
-      {game.status === 'ready' &&
+      {(latestError || bracketData.status === 'error') && (
+        <p className={styles.error}>
+          Couldn't load builds. Check your connection and restart. ({latestError ?? (bracketData.status === 'error' ? bracketData.message : '')})
+        </p>
+      )}
+      {game.status === 'ready' && bracketData.status === 'ready' && latest &&
         (selected ? (
           <ChampionView
-            key={selected.id}
+            key={`${selected.id}-${activeBracket}`}
             version={game.version}
             items={game.items}
             runes={runes}
             champion={selected}
-            source={buildIndex && hasBuild(selected.id) ? { base: BUILDS_BASE, patch: buildIndex.patch } : null}
+            source={hasBuild(selected.id) ? { base: BUILDS_BASE, patch: latest.patch, bracket: activeBracket } : null}
             preferredRole={selected.id === pickId ? pickRole : undefined}
             connected={client.connected}
             inChampSelect={!!client.session}
@@ -155,6 +207,8 @@ export function App() {
             champions={[...game.champions.values()]}
             featured={popular}
             recent={recentIds.flatMap((id) => game.champions.get(id) ?? [])}
+            roles={bracketData.roles}
+            bracket={activeBracket}
             hasBuild={hasBuild}
             onSelect={setSelectedId}
           />

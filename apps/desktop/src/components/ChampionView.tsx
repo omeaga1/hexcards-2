@@ -7,7 +7,7 @@ import { Skeleton } from './arc/skeleton/skeleton';
 import { Switch } from './arc/switch/switch';
 import {
   ROLE_LABELS, TRAIT_LABELS, championIconUrl, loadAbilities, loadChampionBuilds,
-  type AbilityInfo, type ChampionBuilds, type ChampionInfo, type ItemInfo, type Role, type RuneData, type Trait,
+  type AbilityInfo, type Bracket, type ChampionBuilds, type ChampionInfo, type ItemInfo, type Role, type RuneData, type Trait,
 } from '@hexcards/data';
 import { BuildLane } from './BuildLane';
 import { ImportPanel } from './ImportPanel';
@@ -24,8 +24,8 @@ interface ChampionViewProps {
   /** Null while loading or if CommunityDragon is unreachable. */
   runes: RuneData | null;
   champion: ChampionInfo;
-  /** Where published builds live, and the current patch. Null when this champion has no builds. */
-  source: { base: string; patch: string } | null;
+  /** Where published builds live, the patch and rank bracket. Null when this champion has no builds. */
+  source: { base: string; patch: string; bracket: Bracket } | null;
   /** Open this role first if the champion has builds for it (e.g. your champ select position). */
   preferredRole?: Role;
   connected: boolean;
@@ -44,7 +44,7 @@ export function ChampionView({ version, items, runes, champion, source, preferre
     if (!source) return;
     let cancelled = false;
     setBuilds({ status: 'loading' });
-    loadChampionBuilds(source.base, source.patch, champion.key)
+    loadChampionBuilds(source.base, source.patch, source.bracket, champion.key)
       .then((roles) => {
         if (cancelled) return;
         setBuilds({ status: 'ready', roles });
@@ -54,7 +54,7 @@ export function ChampionView({ version, items, runes, champion, source, preferre
     return () => {
       cancelled = true;
     };
-  }, [source?.base, source?.patch, champion.key, preferredRole]);
+  }, [source?.base, source?.patch, source?.bracket, champion.key, preferredRole]);
 
   const roles = builds.status === 'ready' ? builds.roles : [];
   const current = roles.find((r) => r.role === role);
@@ -82,7 +82,7 @@ export function ChampionView({ version, items, runes, champion, source, preferre
           <h1 className={styles.title}>{champion.name}</h1>
           {current && (
             <p className={styles.subtitle}>
-              {ROLE_LABELS[current.role]} · patch {current.patch} · {current.variants.reduce((s, v) => s + v.stats.games, 0).toLocaleString()} high-elo games
+              {ROLE_LABELS[current.role]} · patch {current.patch} · {current.variants.reduce((s, v) => s + v.stats.games, 0).toLocaleString()} games
             </p>
           )}
         </div>
@@ -101,7 +101,7 @@ export function ChampionView({ version, items, runes, champion, source, preferre
         <section className={styles.empty}>
           <p className={styles.emptyTitle}>No build for {champion.name} this patch</p>
           <p className={styles.note}>
-            {champion.name} wasn't played enough in Master and above for a reliable build yet. Builds appear once a role has 40 games.
+            {champion.name} hasn't been played enough at this rank for a reliable build yet. Builds appear once a role has 40 games. Try another rank bracket.
           </p>
         </section>
       ) : builds.status === 'loading' ? (

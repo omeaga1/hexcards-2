@@ -37,4 +37,9 @@ export const settings = {
   setShowRoleIcons: (on: boolean) => write('hexcards.showRoleIcons', String(on)),
   roleView: (): 'tiers' | 'grid' => (read('hexcards.roleView') === 'grid' ? 'grid' : 'tiers'),
   setRoleView: (view: 'tiers' | 'grid') => write('hexcards.roleView', view),
+  bracket: (): 'new' | 'climbing' | 'pro' => {
+    const b = read('hexcards.bracket');
+    return b === 'new' || b === 'climbing' ? b : 'pro';
+  },
+  setBracket: (b: 'new' | 'climbing' | 'pro') => write('hexcards.bracket', b),
 };

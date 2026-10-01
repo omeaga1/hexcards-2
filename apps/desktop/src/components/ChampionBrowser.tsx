@@ -3,8 +3,8 @@ import { SearchField } from './arc/search-field/search-field';
 import SegmentedControl from './arc/segmented-control/segmented-control';
 import { Switch } from './arc/switch/switch';
 import {
-  ROLES, ROLE_LABELS, championIconUrl, championRoles, championSplashUrl, championTileUrl, roleIconUrl, rolePickRate, roleStats, rolesSample,
-  type ChampionInfo, type Role,
+  BRACKET_RANKS, ROLES, ROLE_LABELS, championIconUrl, championSplashUrl, championTileUrl, roleIconUrl,
+  type Bracket, type ChampionInfo, type Role, type RoleTable,
 } from '@hexcards/data';
 import { buildTierList } from '@hexcards/engine';
 import { settings } from '../lcu/settings';
@@ -27,13 +27,18 @@ interface ChampionBrowserProps {
   champions: ChampionInfo[];
   featured: FeaturedChampion[];
   recent: ChampionInfo[];
+  /** Role games, wins and bans for the selected rank bracket. */
+  roles: RoleTable;
+  bracket: Bracket;
   hasBuild: (championId: number) => boolean;
   onSelect: (championId: number) => void;
 }
 
 type RoleFilter = Role | 'all';
 
-export function ChampionBrowser({ version, champions, featured, recent, hasBuild, onSelect }: ChampionBrowserProps) {
+export function ChampionBrowser({ version, champions, featured, recent, roles, bracket, hasBuild, onSelect }: ChampionBrowserProps) {
+  const championRoles = (id: number) => roles.championRoles(id);
+  const rolePickRate = (id: number, r: Role) => roles.pickRate(id, r);
   const [query, setQuery] = useState('');
   const [role, setRole] = useState<RoleFilter>('all');
   const [view, setView] = useState<'tiers' | 'grid'>('tiers');
@@ -50,14 +55,14 @@ export function ChampionBrowser({ version, champions, featured, recent, hasBuild
   // Only champions tagged for the role (the same set the grid shows), so one-off off-role games
   // don't land in the tier list.
   const tierList = useMemo(
-    () => (role === 'all' ? null : buildTierList(roleStats(role).filter((s) => championRoles(s.championId).some((r) => r.role === role)))),
-    [role],
+    () => (role === 'all' ? null : buildTierList(roles.roleStats(role).filter((s) => championRoles(s.championId).some((r) => r.role === role)))),
+    [role, roles],
   );
   const showTiers = role !== 'all' && view === 'tiers' && !query;
 
   const sorted = useMemo(() => [...champions].sort((a, b) => a.name.localeCompare(b.name)), [champions]);
   const playsRole = (c: ChampionInfo, r: Role) => championRoles(c.id).some((x) => x.role === r);
-  const roleCounts = useMemo(() => Object.fromEntries(ROLES.map((r) => [r, sorted.filter((c) => playsRole(c, r)).length])), [sorted]);
+  const roleCounts = useMemo(() => Object.fromEntries(ROLES.map((r) => [r, sorted.filter((c) => playsRole(c, r)).length])), [sorted, roles]);
 
   const matches = useMemo(() => {
     const q = normalize(query);
@@ -67,7 +72,7 @@ export function ChampionBrowser({ version, champions, featured, recent, hasBuild
     const starts = pool.filter((c) => normalize(c.name).startsWith(q) || normalize(c.key).startsWith(q));
     const contains = pool.filter((c) => !starts.includes(c) && normalize(c.name).includes(q));
     return [...starts, ...contains];
-  }, [query, role, sorted]);
+  }, [query, role, sorted, roles]);
 
   // With no search or role filter, group by each champion's main role.
   const sections = useMemo(() => {
@@ -75,7 +80,7 @@ export function ChampionBrowser({ version, champions, featured, recent, hasBuild
     const byRole = ROLES.map((r) => ({ role: r as Role | null, champions: sorted.filter((c) => championRoles(c.id)[0]?.role === r) }));
     const unseen = sorted.filter((c) => championRoles(c.id).length === 0);
     return [...byRole, ...(unseen.length ? [{ role: null, champions: unseen }] : [])];
-  }, [query, role, sorted]);
+  }, [query, role, sorted, roles]);
 
   // Ctrl+K or "/" jumps to search from anywhere.
   useEffect(() => {
@@ -163,7 +168,7 @@ export function ChampionBrowser({ version, champions, featured, recent, hasBuild
         />
 
         <p className={styles.caption}>
-          Roles from {rolesSample.games.toLocaleString()} Challenger and Grandmaster games on patch {rolesSample.patch}.
+          Roles and tiers from {roles.games.toLocaleString()} ranked games ({BRACKET_RANKS[bracket]}) on patch {roles.data.patch}.
         </p>
       </aside>
 
