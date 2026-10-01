@@ -10,3 +10,6 @@ target/
 # Tauri
 apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/gen/
+
+# Collected match data (published separately, too large for git)
+pipeline/data/
