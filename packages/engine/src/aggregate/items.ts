@@ -88,6 +88,8 @@ export class ItemCatalog {
     }
     if (tags.has('Tenacity') || /crowd control/i.test(text)) out.add('enemy-heavy-cc');
     if (/Shield Reaver/i.test(text)) out.add('enemy-shields');
+    // Health with armor or magic resist: something to stand in front with when nobody else on the team can.
+    if (tags.has('Health') && (tags.has('Armor') || tags.has('SpellBlock'))) out.add('ally-no-frontline');
     return out;
   }
 

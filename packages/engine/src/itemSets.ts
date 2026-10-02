@@ -1,4 +1,4 @@
-import { TRAIT_LABELS } from '@hexcards/data';
+import { traitClause } from '@hexcards/data';
 import type { BuildVariant, ChampionBuilds, LcuItemSet, LcuItemSetBlock, LcuItemSetsDoc, Slot, Swap } from '@hexcards/data';
 
 const SUMMONERS_RIFT = 11;
@@ -55,7 +55,7 @@ export function buildItemSet(champion: ChampionBuilds, variant: BuildVariant, ac
   const blocks = [
     block('Start', common('start').map((c) => c.itemId)),
     block('First back', common('first-back').map((c) => c.itemId)),
-    ...activeSwaps.map((s) => block(`Swap ${TRAIT_LABELS[s.trigger]}`, [...s.earlyComponents, s.itemId])),
+    ...activeSwaps.map((s) => block(`Swap ${traitClause(s.trigger)}`, [...s.earlyComponents, s.itemId])),
     block('Core', CORE_SLOTS.map(defaultItem).filter((id): id is number => id !== undefined)),
     block('Boots', common('boots').map((c) => c.itemId)),
     block('Late game', LATE_SLOTS.flatMap((slot) => common(slot).map((c) => c.itemId))),

@@ -85,9 +85,17 @@ export interface RuneInfo {
   summary: string;
 }
 
+/** A rune tree, laid out the way the client shows it. */
+export interface RuneStyle extends RuneInfo {
+  /** Perk IDs row by row: the keystones, then three rows of runes. */
+  rows: number[][];
+  /** Stat shard rows (offense, flex, defense). Every tree has the same ones. */
+  shardRows: number[][];
+}
+
 export interface RuneData {
   perks: Map<number, RuneInfo>;
-  styles: Map<number, RuneInfo>;
+  styles: Map<number, RuneStyle>;
 }
 
 /** "/lol-game-data/assets/v1/perk-images/X.png" → CommunityDragon URL (which is all lowercase). */
@@ -99,10 +107,19 @@ export async function loadRunes(): Promise<RuneData> {
   const [perksRes, stylesRes] = await Promise.all([fetch(`${CDRAGON}/v1/perks.json`), fetch(`${CDRAGON}/v1/perkstyles.json`)]);
   if (!perksRes.ok || !stylesRes.ok) throw new Error(`CommunityDragon runes: HTTP ${perksRes.status}/${stylesRes.status}`);
   const perks = (await perksRes.json()) as { id: number; name: string; iconPath: string; shortDesc: string }[];
-  const styles = (await stylesRes.json()) as { styles: { id: number; name: string; iconPath: string; tooltip: string }[] };
+  type Slot = { type: string; perks: number[] };
+  const styles = (await stylesRes.json()) as { styles: { id: number; name: string; iconPath: string; tooltip: string; slots: Slot[] }[] };
+  const perksOf = (slots: Slot[], stat: boolean) => slots.filter((slot) => (slot.type === 'kStatMod') === stat).map((slot) => slot.perks);
   return {
     perks: new Map(perks.map((p) => [p.id, { id: p.id, name: p.name, icon: cdragonAsset(p.iconPath), summary: stripTags(p.shortDesc) }])),
-    styles: new Map(styles.styles.map((s) => [s.id, { id: s.id, name: s.name, icon: cdragonAsset(s.iconPath), summary: s.tooltip }])),
+    styles: new Map(styles.styles.map((s) => [s.id, {
+      id: s.id,
+      name: s.name,
+      icon: cdragonAsset(s.iconPath),
+      summary: s.tooltip,
+      rows: perksOf(s.slots ?? [], false),
+      shardRows: perksOf(s.slots ?? [], true),
+    }])),
   };
 }
 

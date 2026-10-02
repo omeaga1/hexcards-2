@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GameRecord } from '@hexcards/data';
-import { ItemCatalog, buildTraitTable, findSwaps, matchupTraits, type BuildGame, type DDragonItem } from '../src';
+import { ItemCatalog, buildTraitTable, findSwaps, matchupTraits, swapCandidates, type BuildGame, type DDragonItem } from '../src';
 
 const item = (name: string, tags: string[], description = ''): DDragonItem => ({
   name, description, gold: { total: 3000, purchasable: true }, tags, into: [], depth: 3, maps: { 11: true },
@@ -85,5 +85,35 @@ describe('findSwaps', () => {
       ...Array.from({ length: 100 }, (_, i) => game([3036, 3156, 3031], i < 50, false)),
     ];
     expect(findSwaps(games, slots, items)).toEqual([]);
+  });
+});
+
+describe('swapCandidates across builds', () => {
+  const game = (core: number[], win: boolean, ap: boolean): BuildGame => ({
+    win, runes: null, spells: [4, 7], skills: '', start: [], firstBack: [], boots: null,
+    legendaries: core.map((id, i) => ({ id, minute: 10 + i * 8 })),
+    buys: core.map((id, i): [number, number] => [id, (10 + i * 8) * 60]),
+    traits: new Set(ap ? ['enemy-mostly-ap'] : []),
+  });
+  // Across all of a champion's games, Maw is bought far more vs AP and doesn't lose.
+  const pooled = [
+    ...Array.from({ length: 40 }, (_, i) => game([3036, 3031, 3156], i < 22, true)),
+    ...Array.from({ length: 40 }, (_, i) => game([3036, 3031, 3142], i < 20, true)),
+    ...Array.from({ length: 120 }, (_, i) => game([3036, 3031, 3142], i < 60, false)),
+  ];
+  const slots = [{ slot: 'core-3' as const, common: [{ itemId: 3142, share: 0.7 }] }];
+
+  it('finds a swap on the pooled games, with how much more often it is bought', () => {
+    const [candidate] = swapCandidates(pooled, items);
+    expect(candidate).toMatchObject({ itemId: 3156, trigger: 'enemy-mostly-ap', buyers: 40, rateOn: 0.5, rateOff: 0 });
+  });
+
+  it('gives a build the swap only if its own players make it', () => {
+    const candidates = swapCandidates(pooled, items);
+    const buyers = pooled.slice(0, 60); // 40 that buy Maw vs AP, 20 that don't
+    const others = pooled.slice(40, 80); // vs AP, but never buy Maw
+    const [swap] = findSwaps(buyers, slots, items, candidates);
+    expect(swap).toMatchObject({ itemId: 3156, replacesSlot: 'core-3', evidence: { games: 40, buyRate: [0.5, 0] } });
+    expect(findSwaps(others, slots, items, candidates)).toEqual([]);
   });
 });

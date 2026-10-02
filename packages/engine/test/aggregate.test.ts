@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { GamePlayer } from '@hexcards/data';
+import { distinctCorePath, type GamePlayer } from '@hexcards/data';
 import {
   ItemCatalog, buildVariants, chooseClusters, cosineDistance, labelFor, skillOrderOf, toBuildGame, validateSkillOrder,
   type BuildGame, type DDragonItem, PROFILE_TAGS,
@@ -104,10 +104,38 @@ describe('buildVariants', () => {
     expect(bruiser!.runes.perkIds).toEqual(bruiserPage.ids);
   });
 
+  it('shows each item once on the core path', () => {
+    // Shadowflame is bought 2nd or 3rd often enough to lead both slots when they're counted alone.
+    const games = [
+      ...Array.from({ length: 18 }, () => toBuildGame(player([3089, 4645, 3157], 1), items)),
+      ...Array.from({ length: 12 }, () => toBuildGame(player([3089, 3157, 4645], 1), items)),
+      ...Array.from({ length: 10 }, () => toBuildGame(player([3157, 3089, 4645], 0), items)),
+    ];
+    const [variant] = buildVariants(games, { items, styles, championName: 'Annie' });
+    const main = (slot: string) => variant!.slots.find((s) => s.slot === slot)!.common;
+    expect([main('core-1')[0]!.itemId, main('core-2')[0]!.itemId, main('core-3')[0]!.itemId]).toEqual([3089, 4645, 3157]);
+    // Shadowflame stays listed in Core 3 with its real share.
+    expect(main('core-3').find((c) => c.itemId === 4645)!.share).toBeCloseTo(22 / 40);
+  });
+
   it('never publishes an invalid rune page', () => {
     // Every game uses a page with two secondaries from the same row.
     const broken = { p: 8000, s: 8400, ids: [8010, 9111, 9104, 8299, 8444, 8473, 5005, 5008, 5011] };
     const games: BuildGame[] = Array.from({ length: 50 }, () => toBuildGame(player([3078, 6610, 3053], 1, { runes: broken }), items));
     expect(buildVariants(games, { items, styles, championName: 'Jax' })).toEqual([]);
+  });
+});
+
+describe('distinctCorePath', () => {
+  const slot = (name: 'start' | 'core-1' | 'core-2' | 'core-3', ...ids: number[]) => ({ slot: name, common: ids.map((itemId) => ({ itemId, share: 0.3 })) });
+
+  it('moves a repeated core item behind the next most built one', () => {
+    const slots = distinctCorePath([slot('start', 1055), slot('core-1', 3089, 4645), slot('core-2', 4645, 3157), slot('core-3', 4645, 3157, 3089)]);
+    expect(slots.map((s) => s.common.map((c) => c.itemId))).toEqual([[1055], [3089, 4645], [4645, 3157], [3157, 4645, 3089]]);
+  });
+
+  it('leaves a path that is already distinct untouched', () => {
+    const slots = [slot('core-1', 3089), slot('core-2', 4645), slot('core-3', 3157)];
+    expect(distinctCorePath(slots)).toBe(slots);
   });
 });

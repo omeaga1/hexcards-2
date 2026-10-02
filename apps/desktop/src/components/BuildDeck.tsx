@@ -15,11 +15,13 @@ interface BuildDeckProps {
   variants: BuildVariant[];
   items: Map<number, ItemInfo>;
   value: string;
+  /** The build that fits this game's teams best, if there are teams to go on. */
+  recommendedId?: string;
   onValueChange: (id: string) => void;
 }
 
 /** The champion's builds dealt as a hand of Hex Cards. Pick one to see its runes, skills and items. */
-export function BuildDeck({ version, champion, variants, items, value, onValueChange }: BuildDeckProps) {
+export function BuildDeck({ version, champion, variants, items, value, recommendedId, onValueChange }: BuildDeckProps) {
   const reduce = useReducedMotion();
   const cards = useRef<(HTMLButtonElement | null)[]>([]);
   const mostPlayed = variants.length > 1 ? maxBy(variants, (v) => v.stats.pickShare) : null;
@@ -40,7 +42,10 @@ export function BuildDeck({ version, champion, variants, items, value, onValueCh
     <div className={styles.deck} role="radiogroup" aria-label="Builds">
       {variants.map((v, i) => {
         const selected = v.id === value;
-        const stamps = [v === mostPlayed && 'Most played', v === bestWin && 'Best win rate'].filter((s): s is string => !!s);
+        // Two stamps fit on a card; fitting this game matters more than overall win rate.
+        const stamps = [v.id === recommendedId && 'Best for this game', v === mostPlayed && 'Most played', v === bestWin && 'Best win rate']
+          .filter((s): s is string => !!s)
+          .slice(0, 2);
         const core = (['core-1', 'core-2', 'core-3'] as const).flatMap((slot) => v.slots.find((s) => s.slot === slot)?.common[0]?.itemId ?? []);
         const fan = (i - middle) * FAN;
         return (
@@ -59,8 +64,8 @@ export function BuildDeck({ version, champion, variants, items, value, onValueCh
               title={v.label.startsWith(`${champion.name} `) ? v.label.slice(champion.name.length + 1) : v.label}
               subtitle={`${(v.stats.winRate * 100).toFixed(1)}% win · ${percent(v.stats.pickShare)} of ${v.stats.games.toLocaleString()} games`}
               stamps={stamps}
-              footer={core.map((id) => (
-                <img key={id} className={styles.item} src={itemIconUrl(version, id)} alt={items.get(id)?.name ?? `Item ${id}`} title={items.get(id)?.name} draggable={false} />
+              footer={core.map((id, k) => (
+                <img key={`${k}-${id}`} className={styles.item} src={itemIconUrl(version, id)} alt={items.get(id)?.name ?? `Item ${id}`} title={items.get(id)?.name} draggable={false} />
               ))}
               selected={selected}
               onSelect={() => onValueChange(v.id)}

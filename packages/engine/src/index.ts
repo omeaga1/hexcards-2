@@ -4,3 +4,5 @@ export * from './skills';
 export * from './tiers';
 export * from './importer';
 export * from './aggregate';
+export * from './recommend';
+export * from './picks';

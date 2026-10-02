@@ -25,6 +25,11 @@ export interface GamePlayer {
 export interface GameRecord {
   id: string;
   region: string;
+  /** Rank bracket and ladder tier ("EMERALD II") of the player the game was found through. */
+  bracket?: string;
+  tier?: string;
+  /** One-way ID of that player, to cap games per player. */
+  seed?: string;
   version: string;
   duration: number;
   bans: number[];

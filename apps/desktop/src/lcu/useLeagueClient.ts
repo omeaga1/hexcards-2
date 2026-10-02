@@ -8,6 +8,8 @@ export interface ChampSelectSession {
   localPlayerCellId: number;
   myTeam: { cellId: number; championId: number; championPickIntent: number; assignedPosition: string }[];
   theirTeam: { cellId: number; championId: number }[];
+  /** Champions banned so far, as the client shows them. */
+  bans?: { myTeamBans: number[]; theirTeamBans: number[] };
 }
 
 export interface LeagueClientState {
@@ -17,6 +19,15 @@ export interface LeagueClientState {
   message: string;
   phase: string | null;
   session: ChampSelectSession | null;
+  /** Champions you can play right now (owned, free this week or rented), once the client has said. */
+  owned: Set<number> | null;
+}
+
+/** The parts of `/lol-champions/v1/owned-champions-minimal` Hex Cards reads. */
+interface OwnedChampion {
+  id: number;
+  freeToPlay?: boolean;
+  ownership?: { owned?: boolean; rental?: { rented?: boolean } };
 }
 
 /** Talks to the Rust core, which forwards an allowlist of League client requests. */
@@ -38,7 +49,41 @@ export function useLeagueClient(): LeagueClientState {
     message: available ? 'Waiting for the League client' : 'Browser preview: open the desktop app to connect',
     phase: null,
     session: null,
+    owned: null,
   });
+
+  // Which champions you can play, read once each champ select, so suggestions stick to them.
+  const inChampSelect = !!state.session;
+  useEffect(() => {
+    if (!available || !state.connected || !inChampSelect) return;
+    let cancelled = false;
+    lcuClient
+      .request<OwnedChampion[]>('GET', '/lol-champions/v1/owned-champions-minimal')
+      .then((res) => {
+        if (cancelled || res.status !== 200 || !Array.isArray(res.body)) return;
+        const owned = new Set(res.body.filter((c) => c.ownership?.owned || c.freeToPlay || c.ownership?.rental?.rented).map((c) => c.id));
+        setState((s) => ({ ...s, owned }));
+      })
+      .catch(() => {
+        // Without it, suggestions just include champions you might not own.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [available, state.connected, inChampSelect]);
+
+  // Development only: ?demo=champ-select fakes a champ select (lcu/demo.ts). Release builds drop it.
+  useEffect(() => {
+    if (!import.meta.env.DEV || available) return;
+    let cancelled = false;
+    void import('./demo').then(({ demoSession }) => {
+      const demo = demoSession();
+      if (demo && !cancelled) setState((s) => ({ ...s, message: 'Demo champ select', phase: 'ChampSelect', session: demo }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [available]);
 
   useEffect(() => {
     if (!available) return;

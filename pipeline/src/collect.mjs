@@ -2,48 +2,60 @@
 // This is the raw material for builds, tier lists and roles: runes, spells, skill order, item purchases
 // with timestamps, both team compositions, and what each player did.
 //
-//   node pipeline/src/collect.mjs [--brackets new,climbing,pro] [--per-region 500] [--minutes 330]
+//   node pipeline/src/collect.mjs [--patch 16.19] [--brackets new,climbing,pro] [--per-region 500] [--minutes 330]
 //
-// Games are grouped into three rank brackets. Each region cycles between them so they fill evenly.
-// Records are appended to pipeline/data/<patch>/<bracket>.ndjson as they arrive, so stopping partway
-// never loses data, and a rerun skips games already collected in any bracket.
+// Games are grouped into three rank brackets. Each region cycles between them so they fill evenly,
+// and within a bracket draws from whichever tier has the fewest games so far. Records are appended
+// to pipeline/data/<patch>/<bracket>.ndjson as they arrive, so stopping partway never loses data,
+// and a rerun skips games already collected in any bracket.
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { RANKED_SOLO, REGIONS, RiotClient, currentPatch, riotKeyFromEnv } from './riot.mjs';
+import { REGIONS, RiotClient, currentPatch, riotKeyFromEnv } from './riot.mjs';
+import { BRACKETS, RANKED_SOLO, bracketGroups, nextGroup, rejectReason, seedId, shuffle, tierGroup } from './games.mjs';
 
-/** Rank brackets: where players are drawn from. A game counts for the bracket of the player it came from. */
-export const BRACKETS = {
-  new: { tiers: ['SILVER', 'BRONZE', 'IRON'], apex: [] },
-  climbing: { tiers: ['EMERALD', 'PLATINUM', 'GOLD'], apex: [] },
-  pro: { tiers: ['DIAMOND'], apex: ['challengerleagues', 'grandmasterleagues', 'masterleagues'] },
-};
 const DIVISIONS = ['I', 'II', 'III', 'IV'];
-/** Take at most this many new games from one player before moving on, so a bracket isn't a few people. */
+/** Ladder pages to draw players from in each division (up to 205 players a page). */
+const PAGES = [1, 2];
+/** Take at most this many new games from one player in a run before moving on... */
 const GAMES_PER_PLAYER = 4;
+/** ...and at most this many over the whole patch, so a bracket isn't a few busy players. */
+const GAMES_PER_PLAYER_PER_PATCH = 12;
 
-const args = Object.fromEntries(process.argv.slice(2).join(' ').split('--').filter(Boolean).map((a) => a.trim().split(/\s+/)));
+// "--name value" pairs. Values are taken whole, so a path with "--" in it survives.
+const args = {};
+for (let i = 2; i < process.argv.length; i++) if (process.argv[i].startsWith('--')) args[process.argv[i].slice(2)] = process.argv[++i];
 const brackets = (args.brackets ?? 'new,climbing,pro').split(',').filter((b) => b in BRACKETS);
 const PER_REGION = Number(args['per-region'] ?? 500);
 const DEADLINE = Date.now() + Number(args.minutes ?? 330) * 60_000;
 
-const POSITIONS = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'];
 const SKILL_KEYS = { 1: 'Q', 2: 'W', 3: 'E', 4: 'R' };
 
 const riot = new RiotClient(riotKeyFromEnv());
-const patch = await currentPatch();
+// The workflow passes the patch it restored data for, so a patch going live mid-run can't split the work.
+const patch = args.patch ?? (await currentPatch());
 const dir = new URL(`../data/${patch}/`, import.meta.url);
 mkdirSync(dir, { recursive: true });
 const fileFor = (bracket) => new URL(`${bracket}.ndjson`, dir);
 
-// Resume: skip games already on disk in any bracket.
+// Resume: skip games already on disk, and pick up each bracket's tier balance and each player's game count.
 const have = new Set();
+const groupCounts = Object.fromEntries(Object.keys(BRACKETS).map((b) => [b, {}]));
+const seedCounts = new Map();
 for (const bracket of Object.keys(BRACKETS)) {
   if (!existsSync(fileFor(bracket))) continue;
   for (const line of readFileSync(fileFor(bracket), 'utf8').split('\n')) {
-    if (line) have.add(JSON.parse(line).id);
+    if (!line) continue;
+    const record = JSON.parse(line);
+    have.add(record.id);
+    if (record.tier) {
+      const group = tierGroup(record.tier);
+      groupCounts[bracket][group] = (groupCounts[bracket][group] ?? 0) + 1;
+    }
+    if (record.seed) seedCounts.set(record.seed, (seedCounts.get(record.seed) ?? 0) + 1);
   }
 }
 console.log(`Patch ${patch}: ${have.size} games on disk. Collecting up to ${PER_REGION} per bracket per region for ${brackets.join(', ')}.`);
+for (const b of brackets) console.log(`  ${b} so far: ${JSON.stringify(groupCounts[b])}`);
 
 /** [keystone, primary ×3, secondary ×2, shards: offense, flex, defense] plus the two tree IDs. */
 function runePage(perks) {
@@ -86,7 +98,7 @@ function fromTimeline(timeline) {
   return { skills, buys };
 }
 
-function toRecord(region, bracket, tier, match, timeline) {
+function toRecord(region, bracket, tier, seed, match, timeline) {
   const { skills, buys } = fromTimeline(timeline);
   const info = match.info;
   return {
@@ -94,6 +106,7 @@ function toRecord(region, bracket, tier, match, timeline) {
     region,
     bracket,
     tier,
+    seed,
     version: info.gameVersion,
     duration: info.gameDuration,
     bans: info.teams.flatMap((t) => t.bans.map((b) => b.championId)).filter((id) => id > 0),
@@ -118,57 +131,67 @@ function toRecord(region, bracket, tier, match, timeline) {
   };
 }
 
-/** Players for a bracket in one region, mixing tiers and divisions so no single one dominates. */
+/** Players for a bracket in one region, in shuffled queues per tier group, so each run starts with different players. */
 async function playersFor(platform, bracket) {
   const { tiers, apex } = BRACKETS[bracket];
-  const lists = [];
+  const queues = Object.fromEntries(bracketGroups(bracket).map((g) => [g, []]));
   for (const ladder of apex) {
     const league = await riot.get(platform, `/lol/league/v4/${ladder}/by-queue/RANKED_SOLO_5x5`);
-    lists.push((league?.entries ?? []).map((e) => ({ puuid: e.puuid, tier: league.tier })));
+    queues['MASTER+'].push(...(league?.entries ?? []).map((e) => ({ puuid: e.puuid, tier: league.tier })));
   }
   for (const tier of tiers) {
     for (const division of DIVISIONS) {
-      const entries = (await riot.get(platform, `/lol/league/v4/entries/RANKED_SOLO_5x5/${tier}/${division}?page=1`)) ?? [];
-      lists.push(entries.map((e) => ({ puuid: e.puuid, tier: `${tier} ${division}` })));
+      for (const page of PAGES) {
+        const entries = (await riot.get(platform, `/lol/league/v4/entries/RANKED_SOLO_5x5/${tier}/${division}?page=${page}`)) ?? [];
+        queues[tier].push(...entries.map((e) => ({ puuid: e.puuid, tier: `${tier} ${division}` })));
+      }
     }
   }
-  // Interleave: one player from each list in turn.
-  const mixed = [];
-  for (let i = 0; lists.some((l) => i < l.length); i++) for (const l of lists) if (l[i]) mixed.push(l[i]);
-  return mixed;
+  for (const g of Object.keys(queues)) queues[g] = shuffle(queues[g]).filter((p) => (seedCounts.get(seedId(p.puuid)) ?? 0) < GAMES_PER_PLAYER_PER_PATCH);
+  return queues;
 }
 
 const counts = Object.fromEntries(brackets.map((b) => [b, 0]));
+const rejected = {};
 
 async function collectRegion({ platform, regional }) {
   const pools = {};
-  for (const bracket of brackets) pools[bracket] = { players: await playersFor(platform, bracket), next: 0, collected: 0 };
+  for (const bracket of brackets) pools[bracket] = { queues: await playersFor(platform, bracket), collected: 0 };
 
-  const open = () => brackets.filter((b) => pools[b].collected < PER_REGION && pools[b].next < pools[b].players.length);
+  const hasPlayers = (bracket) => (g) => pools[bracket].queues[g].length > 0;
+  const open = () => brackets.filter((b) => pools[b].collected < PER_REGION && bracketGroups(b).some(hasPlayers(b)));
   while (Date.now() < DEADLINE && open().length > 0) {
-    // One player from each bracket that still needs games, in turn.
+    // One player from each bracket that still needs games, in turn, from its least collected tier.
     for (const bracket of open()) {
       const pool = pools[bracket];
-      const { puuid, tier } = pool.players[pool.next++];
+      const group = nextGroup(bracketGroups(bracket), groupCounts[bracket], hasPlayers(bracket));
+      if (!group) continue;
+      const { puuid, tier } = pool.queues[group].shift();
+      const seed = seedId(puuid);
       const ids = (await riot.get(regional, `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${RANKED_SOLO}&type=ranked&count=20`)) ?? [];
       let fromPlayer = 0;
       for (const id of ids) {
-        if (fromPlayer >= GAMES_PER_PLAYER || pool.collected >= PER_REGION || Date.now() > DEADLINE) break;
+        if (fromPlayer >= GAMES_PER_PLAYER || (seedCounts.get(seed) ?? 0) >= GAMES_PER_PLAYER_PER_PATCH) break;
+        if (pool.collected >= PER_REGION || Date.now() > DEADLINE) break;
         if (have.has(id)) continue;
         have.add(id);
         const match = await riot.get(regional, `/lol/match/v5/matches/${id}`);
         if (!match?.info) continue;
-        // Match lists are newest first: once a game is from an older patch, the rest are too.
-        if (!match.info.gameVersion?.startsWith(`${patch}.`)) break;
-        // Remakes and games without proper positions don't say anything about builds.
-        if (match.info.gameDuration < 600) continue;
-        if (!match.info.participants.every((p) => POSITIONS.includes(p.teamPosition))) continue;
+        const reason = rejectReason(match.info, patch);
+        // Match lists are newest first: once a game is from another patch, the rest are older still.
+        if (reason === 'other patch') break;
+        if (reason) {
+          rejected[reason] = (rejected[reason] ?? 0) + 1;
+          continue;
+        }
         const timeline = await riot.get(regional, `/lol/match/v5/matches/${id}/timeline`);
         if (!timeline?.info) continue;
-        appendFileSync(fileFor(bracket), JSON.stringify(toRecord(platform, bracket, tier, match, timeline)) + '\n');
+        appendFileSync(fileFor(bracket), JSON.stringify(toRecord(platform, bracket, tier, seed, match, timeline)) + '\n');
         fromPlayer++;
         pool.collected++;
         counts[bracket]++;
+        groupCounts[bracket][group] = (groupCounts[bracket][group] ?? 0) + 1;
+        seedCounts.set(seed, (seedCounts.get(seed) ?? 0) + 1);
         if (pool.collected % 25 === 0) console.log(`  ${platform} ${bracket}: ${pool.collected} games`);
       }
     }
@@ -178,3 +201,5 @@ async function collectRegion({ platform, regional }) {
 
 await Promise.all(REGIONS.map(collectRegion));
 console.log(`Collected ${Object.entries(counts).map(([b, n]) => `${n} ${b}`).join(', ')} games for patch ${patch}.`);
+console.log(`Skipped: ${JSON.stringify(rejected)}`);
+for (const b of brackets) console.log(`  ${b} by tier: ${JSON.stringify(groupCounts[b])}`);

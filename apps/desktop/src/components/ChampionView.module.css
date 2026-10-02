@@ -43,9 +43,95 @@
 
 .name { text-shadow: 0 1px 12px var(--background); }
 
+/* Tier, rates and tier at each rank: one row of figures across the bottom of the header. */
+.standing {
+  flex-basis: 100%;
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  text-shadow: 0 1px 12px var(--background);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-6);
+}
+
+.stat {
+  display: grid;
+  gap: var(--space-1);
+}
+.stat dt {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.stat dd {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--space-8);
+}
+
+/* The same letter as the tier list: S in foil, lower tiers stepping down in contrast. */
+.tierLetter {
+  display: inline-grid;
+  place-items: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--space-2);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  font-family: var(--font-display);
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-shadow: none;
+}
+.tierLetter[data-tier="S"] { background: var(--accent-subtle); color: var(--accent-strong); }
+.tierLetter[data-tier="A"] { color: var(--foreground); }
+.tierLetter[data-tier="D"], .tierLetter:not([data-tier]) { color: var(--text-muted); }
+@supports (background-clip: text) {
+  .tierLetter[data-tier="S"] span {
+    background: var(--holo-foil);
+    background-size: 300% 100%;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+.stat .byRank {
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.byRank > span { white-space: nowrap; }
+.byRank > span[data-current] { color: var(--foreground); }
+.rankLetter { color: var(--foreground); font-weight: 500; }
+.rankLetter:not([data-tier]) { color: var(--text-muted); font-weight: 400; }
+.rankLetter[data-tier="S"] { color: var(--accent-strong); }
+
+.spells {
+  margin: 0;
+  display: flex;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.spell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.spell img {
+  width: var(--space-6);
+  height: var(--space-6);
+  border-radius: var(--space-1);
+  border: 1px solid var(--border);
+}
+
 .roleSwitch { margin-left: auto; }
 
 .championIcon {
+  align-self: center;
   width: var(--space-16);
   height: var(--space-16);
   border-radius: var(--space-4);
@@ -95,6 +181,18 @@
   margin: 0;
   font-size: var(--text-sm);
   color: var(--text-secondary);
+}
+
+/* The recommended build and why, in one line above the hand. Accent marks the emphasized pick. */
+.recommendation {
+  margin: 0;
+  max-width: 60rem;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--accent-subtle);
+  color: var(--foreground);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 .traits {

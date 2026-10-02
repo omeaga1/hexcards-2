@@ -1,0 +1,88 @@
+.spikes {
+  margin: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+}
+
+.title { color: var(--foreground); }
+
+.caption {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Rows of item markers above a minute axis. Rows only appear when items finish too close together to sit side by side. */
+.track {
+  --row-height: calc(var(--space-8) + var(--space-3));
+  --axis-height: var(--space-8);
+  position: relative;
+  height: calc(var(--rows) * var(--row-height) + var(--axis-height) + var(--space-2));
+  min-width: 0;
+}
+
+.marker {
+  position: absolute;
+  left: var(--left);
+  bottom: calc(var(--axis-height) + var(--space-2) + var(--row) * var(--row-height));
+}
+
+/* A stem drops from each item to its minute on the axis. */
+.marker::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: var(--stem-x);
+  width: 1px;
+  height: calc(var(--space-2) + var(--row) * var(--row-height));
+  background: var(--border-strong);
+}
+
+.axis {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--axis-height);
+  border-top: 1px solid var(--border-strong);
+}
+
+.tick {
+  position: absolute;
+  left: var(--at);
+  top: var(--space-2);
+  transform: translateX(-50%);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tick[data-edge="start"] { transform: none; }
+.tick[data-edge="end"] { transform: translateX(-100%); }
+.tick::before {
+  content: "";
+  position: absolute;
+  top: calc(-1 * var(--space-2));
+  left: 50%;
+  height: var(--space-1);
+  border-left: 1px solid var(--border-strong);
+}
+.tick[data-edge="start"]::before { left: 0; }
+.tick[data-edge="end"]::before { left: 100%; }
+
+.dot {
+  position: absolute;
+  left: var(--at);
+  top: calc(-1 * var(--space-1));
+  width: var(--space-2);
+  height: var(--space-2);
+  margin-left: calc(-1 * var(--space-1));
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}

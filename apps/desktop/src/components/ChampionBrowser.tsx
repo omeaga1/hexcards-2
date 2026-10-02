@@ -8,8 +8,8 @@ import {
   BRACKET_RANKS, ROLES, ROLE_LABELS, championIconUrl, championLoadingUrl, championTileUrl, roleIconUrl,
   type Bracket, type ChampionInfo, type Role, type RoleTable,
 } from '@hexcards/data';
-import { buildTierList } from '@hexcards/engine';
 import { settings } from '../lcu/settings';
+import { roleTierList } from '../tiers';
 import { HexCard } from './HexCard';
 import { TierList } from './TierList';
 import styles from './ChampionBrowser.module.css';
@@ -32,18 +32,22 @@ interface ChampionBrowserProps {
   recent: ChampionInfo[];
   /** Role games, wins and bans for the selected rank bracket. */
   roles: RoleTable;
+  /** The same for every bracket loaded so far, to show a champion's tier at each rank. */
+  rolesByBracket: { bracket: Bracket; roles: RoleTable }[];
   bracket: Bracket;
+  /** The role filter. Owned by the app, so it survives switching rank brackets and opening a champion. */
+  role: RoleFilter;
+  onRoleChange: (role: RoleFilter) => void;
   hasBuild: (championId: number) => boolean;
   onSelect: (championId: number) => void;
 }
 
-type RoleFilter = Role | 'all';
+export type RoleFilter = Role | 'all';
 
-export function ChampionBrowser({ version, champions, featured, recent, roles, bracket, hasBuild, onSelect }: ChampionBrowserProps) {
+export function ChampionBrowser({ version, champions, featured, recent, roles, rolesByBracket, bracket, role, onRoleChange: setRole, hasBuild, onSelect }: ChampionBrowserProps) {
   const championRoles = (id: number) => roles.championRoles(id);
   const rolePickRate = (id: number, r: Role) => roles.pickRate(id, r);
   const [query, setQuery] = useState('');
-  const [role, setRole] = useState<RoleFilter>('all');
   const [view, setView] = useState<'tiers' | 'grid'>('tiers');
   const [showRoleIcons, setShowRoleIcons] = useState(true);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -56,12 +60,7 @@ export function ChampionBrowser({ version, champions, featured, recent, roles, b
   }, []);
 
   const byId = useMemo(() => new Map(champions.map((c) => [c.id, c])), [champions]);
-  // Only champions tagged for the role (the same set the grid shows), so one-off off-role games
-  // don't land in the tier list.
-  const tierList = useMemo(
-    () => (role === 'all' ? null : buildTierList(roles.roleStats(role).filter((s) => championRoles(s.championId).some((r) => r.role === role)))),
-    [role, roles],
-  );
+  const tierList = useMemo(() => (role === 'all' ? null : roleTierList(roles, role)), [role, roles]);
   const showTiers = role !== 'all' && view === 'tiers' && !query;
 
   const sorted = useMemo(() => [...champions].sort((a, b) => a.name.localeCompare(b.name)), [champions]);
@@ -186,8 +185,8 @@ export function ChampionBrowser({ version, champions, featured, recent, roles, b
                 : role === 'all'
                   ? 'Grouped by main role'
                   : showTiers
-                    ? 'Ranked by win rate, adjusted for how many games each champion has. Top 10% are S tier.'
-                    : 'Most picked first'}
+                    ? `${BRACKET_RANKS[bracket]}. Ranked by win rate, adjusted for how many games each champion has. Top 10% are S tier.`
+                    : `${BRACKET_RANKS[bracket]}. Most picked first.`}
             </p>
           </div>
           {role !== 'all' && !query && (
@@ -232,7 +231,7 @@ export function ChampionBrowser({ version, champions, featured, recent, roles, b
         )}
 
         {showTiers && tierList ? (
-          <TierList role={role as Role} list={tierList} champions={byId} hasBuild={hasBuild} onSelect={onSelect} />
+          <TierList role={role as Role} list={tierList} rolesByBracket={rolesByBracket} champions={byId} hasBuild={hasBuild} onSelect={onSelect} />
         ) : sections ? (
           sections.map((s) => (
             <section key={s.role ?? 'unseen'} className={styles.section} aria-labelledby={`role-${s.role ?? 'unseen'}`}>

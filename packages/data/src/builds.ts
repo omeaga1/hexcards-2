@@ -33,6 +33,9 @@ export const TRAIT_LABELS: Record<Trait, string> = {
   'ally-no-engage': 'your team has no engage',
 };
 
+/** A trait as the end of a sentence: "Swap vs mostly AP", "Swap when your team has no frontline". */
+export const traitClause = (trait: Trait) => (TRAIT_LABELS[trait].startsWith('vs ') ? TRAIT_LABELS[trait] : `when ${TRAIT_LABELS[trait]}`);
+
 export const Slot = z.enum(['start', 'first-back', 'core-1', 'core-2', 'core-3', 'boots', 'late-4', 'late-5', 'late-6']);
 export type Slot = z.infer<typeof Slot>;
 
@@ -60,10 +63,15 @@ export const Swap = z.object({
   timing: z.string(),
   /** Components worth buying early, in order. */
   earlyComponents: z.array(z.number().int()).default([]),
+  /** Average game minute it's finished. Missing in older files. */
+  minute: z.number().optional(),
   evidence: z.object({
+    /** Games with the trigger that bought it. */
     games: z.number().int(),
     /** Win rate with the swap minus without it, when the trigger is present. */
     winRateDelta: z.number(),
+    /** Share of games that bought it with the trigger and without it. Missing in older files. */
+    buyRate: z.tuple([z.number(), z.number()]).optional(),
   }),
 });
 export type Swap = z.infer<typeof Swap>;
@@ -85,8 +93,31 @@ export const BuildVariant = z.object({
     pickShare: z.number().min(0).max(1),
     winRate: z.number().min(0).max(1),
   }),
+  /** [games, wins] among this build's games where each team trait was present. Missing in older files. */
+  traitStats: z.partialRecord(Trait, z.tuple([z.number().int(), z.number().int()])).optional(),
 });
 export type BuildVariant = z.infer<typeof BuildVariant>;
+
+const CORE_PATH: Slot[] = ['core-1', 'core-2', 'core-3'];
+
+/**
+ * Each slot's items are counted on their own, so an item bought 2nd in some games and 3rd in others
+ * can lead both slots, and the path would show it twice. Here each item leads at most one core slot:
+ * a later slot leads with its most built item that isn't already on the path. Shares don't change,
+ * and the item it skipped stays in that slot's list.
+ */
+export function distinctCorePath(slots: BuildVariant['slots']): BuildVariant['slots'] {
+  const taken = new Set<number>();
+  const reordered = new Map<Slot, BuildVariant['slots'][number]>();
+  for (const slot of CORE_PATH) {
+    const s = slots.find((x) => x.slot === slot);
+    const lead = s?.common.find((c) => !taken.has(c.itemId));
+    if (!s || !lead) continue;
+    taken.add(lead.itemId);
+    if (lead !== s.common[0]) reordered.set(slot, { ...s, common: [lead, ...s.common.filter((c) => c !== lead)] });
+  }
+  return reordered.size === 0 ? slots : slots.map((s) => reordered.get(s.slot) ?? s);
+}
 
 export const ChampionBuilds = z.object({
   patch: z.string(),

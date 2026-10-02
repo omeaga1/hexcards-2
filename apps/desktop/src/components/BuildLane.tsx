@@ -1,5 +1,6 @@
-import { TRAIT_LABELS, type BuildVariant, type ItemInfo, type Slot, type Swap } from '@hexcards/data';
+import { traitClause, type BuildVariant, type ItemInfo, type Slot, type Swap } from '@hexcards/data';
 import { ItemIcon } from './ItemIcon';
+import { PowerSpikes, type Spike } from './PowerSpikes';
 import styles from './BuildLane.module.css';
 
 interface Stage {
@@ -72,12 +73,22 @@ export function BuildLane({ version, variant, items, activeSwaps }: BuildLanePro
     return [...best.values()].sort((a, b) => b.share - a.share).slice(0, MAX_ALTERNATIVES + 1);
   };
   const nameOf = (id: number) => items.get(id)?.name ?? `Item ${id}`;
+  const stages = stagesFor(variant);
+  // Each stage's item on the game clock: the lit swap if there is one, else the usual item. Start
+  // and first back are bought before the clock matters.
+  const spikes: Spike[] = stages.flatMap((stage) => {
+    if (stage.slots.some((slot) => BOUGHT_TOGETHER.includes(slot))) return [];
+    const lit = activeSwaps.find((s) => stage.slots.includes(s.replacesSlot));
+    if (lit?.minute) return [{ itemId: lit.itemId, minute: lit.minute, stage: stage.label }];
+    const main = stageItems(stage)[0];
+    return main?.avgMinute ? [{ itemId: main.itemId, minute: main.avgMinute, stage: stage.label }] : [];
+  });
   const swapsByLit = [...variant.swaps].sort((a, b) => Number(activeSwaps.includes(b)) - Number(activeSwaps.includes(a)));
 
   return (
     <div className={styles.root}>
       <ol className={styles.lane} aria-label="Build order">
-        {stagesFor(variant).map((stage) => {
+        {stages.map((stage) => {
           const common = stageItems(stage);
           if (common.length === 0) return null;
           const together = stage.slots.some((slot) => BOUGHT_TOGETHER.includes(slot));
@@ -107,7 +118,7 @@ export function BuildLane({ version, variant, items, activeSwaps }: BuildLanePro
                     {flipTo && (
                       <div className={`${styles.face} ${styles.back}`} aria-hidden={!lit}>
                         <div className={styles.litItem}>
-                          <ItemIcon version={version} itemId={flipTo.itemId} item={items.get(flipTo.itemId)} size="lg" details={[`Swap ${TRAIT_LABELS[flipTo.trigger]}`]} />
+                          <ItemIcon version={version} itemId={flipTo.itemId} item={items.get(flipTo.itemId)} size="lg" details={[`Swap ${traitClause(flipTo.trigger)}`]} />
                         </div>
                       </div>
                     )}
@@ -116,7 +127,7 @@ export function BuildLane({ version, variant, items, activeSwaps }: BuildLanePro
                     <>
                       <div className={styles.mainName}>
                         <span>{nameOf(lit.itemId)}</span>
-                        <span className={styles.litNote}>Swap {TRAIT_LABELS[lit.trigger]}</span>
+                        <span className={styles.litNote}>Swap {traitClause(lit.trigger)}</span>
                       </div>
                       <div className={styles.replaced}>
                         <ItemIcon version={version} itemId={main!.itemId} item={items.get(main!.itemId)} size="sm" dimmed />
@@ -158,6 +169,8 @@ export function BuildLane({ version, variant, items, activeSwaps }: BuildLanePro
         })}
       </ol>
 
+      {spikes.length > 1 && <PowerSpikes version={version} items={items} spikes={spikes} />}
+
       {swapsByLit.length > 0 && (
         <section className={styles.swaps} aria-label="Swaps">
           {swapsByLit.map((swap) => {
@@ -169,7 +182,7 @@ export function BuildLane({ version, variant, items, activeSwaps }: BuildLanePro
                 <div className={styles.swapHead}>
                   <ItemIcon version={version} itemId={swap.itemId} item={items.get(swap.itemId)} size="md" />
                   <div>
-                    <div className={styles.swapTrigger}>Swap {TRAIT_LABELS[swap.trigger]}</div>
+                    <div className={styles.swapTrigger}>Swap {traitClause(swap.trigger)}</div>
                     <div className={styles.swapItem}>{nameOf(swap.itemId)}</div>
                   </div>
                 </div>
@@ -186,7 +199,10 @@ export function BuildLane({ version, variant, items, activeSwaps }: BuildLanePro
                   </div>
                 )}
                 <div className={styles.evidence}>
-                  {signedPercent(swap.evidence.winRateDelta)} win rate {TRAIT_LABELS[swap.trigger]} · {swap.evidence.games.toLocaleString()} games
+                  {/* Buy rates are measured on every rank's games for this champion and role. */}
+                  {swap.evidence.buyRate
+                    ? `Bought in ${percent(swap.evidence.buyRate[0])} of games ${traitClause(swap.trigger)}, ${percent(swap.evidence.buyRate[1])} otherwise. ${signedPercent(swap.evidence.winRateDelta)} win rate when bought, ${swap.evidence.games.toLocaleString()} games across all ranks.`
+                    : `${signedPercent(swap.evidence.winRateDelta)} win rate ${traitClause(swap.trigger)} · ${swap.evidence.games.toLocaleString()} games`}
                 </div>
               </article>
             );

@@ -87,7 +87,7 @@ export function matchupTraits(table: TraitTable, allies: number[], enemies: numb
   if (count(enemies, 'healer') >= 1) traits.add('enemy-heavy-healing');
   if (count(enemies, 'tank') >= 2) traits.add('enemy-tanks-2plus');
   if (count(enemies, 'ap') >= 3) traits.add('enemy-mostly-ap');
-  if (count(enemies, 'ad') >= 4) traits.add('enemy-mostly-ad');
+  if (count(enemies, 'ad') >= 3) traits.add('enemy-mostly-ad');
   if (count(enemies, 'cc') >= 2) traits.add('enemy-heavy-cc');
   if (count(enemies, 'shielder') >= 1) traits.add('enemy-shields');
   if (allies.length > 0 && count(allies, 'tank') === 0) traits.add('ally-no-frontline');

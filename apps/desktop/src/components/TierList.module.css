@@ -152,6 +152,19 @@
 .card dd { margin: 0; font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
 .cardTitle { font-weight: 500; margin-bottom: var(--space-1); }
 
+/* The champion's tier at each rank, so a champion that's strong in one bracket and weak in another stands out. */
+.card .byRank {
+  margin-top: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  align-items: baseline;
+}
+.card .byRank dd { display: flex; gap: var(--space-3); }
+.rankTier { color: var(--text-secondary); white-space: nowrap; }
+.rankLetter { color: var(--foreground); font-weight: 500; }
+.rankLetter:not([data-tier]) { color: var(--text-muted); font-weight: 400; }
+.rankLetter[data-tier="S"] { color: var(--accent-strong); }
+
 @media (prefers-reduced-motion: reduce) {
   .entry, .letter[data-tier="S"] span, .entry[data-tier="S"] .artWrap::after { transition: none; }
 }

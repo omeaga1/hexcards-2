@@ -1,4 +1,4 @@
-import type { BuildVariant, GamePlayer, PerkStyle, RunePage, Slot, Swap, Trait } from '@hexcards/data';
+import { distinctCorePath, type BuildVariant, type GamePlayer, type PerkStyle, type RunePage, type Slot, type Swap, type Trait } from '@hexcards/data';
 import { validateRunePage } from '../runes';
 import { validateSkillOrder } from '../skills';
 import { chooseClusters, type Vector } from './cluster';
@@ -168,80 +168,144 @@ export function labelFor(profile: Record<ProfileTag, number>): string {
   return 'Utility';
 }
 
-/** Swaps are only looked for against these; the rest aren't measured yet. */
-const SWAP_TRIGGERS: Trait[] = ['enemy-heavy-healing', 'enemy-tanks-2plus', 'enemy-mostly-ap', 'enemy-mostly-ad', 'enemy-heavy-cc', 'enemy-shields'];
-/** Players must buy the item this much more often (absolute share) when the trait is present... */
-const SWAP_MIN_LIFT = 0.08;
-/** ...in at least this share of those games... */
-const SWAP_MIN_RATE = 0.15;
-/** ...across at least this many games, and buying it must not lower the win rate. */
-const SWAP_MIN_GAMES = 25;
+/** Swaps are looked for against these team traits. */
+const SWAP_TRIGGERS: Trait[] = [
+  'enemy-heavy-healing', 'enemy-tanks-2plus', 'enemy-mostly-ap', 'enemy-mostly-ad', 'enemy-heavy-cc', 'enemy-shields', 'ally-no-frontline',
+];
 /** Each side of the comparison (trait present / absent) needs this many games. */
-const SWAP_MIN_SIDE = 40;
+const SWAP_MIN_SIDE = 30;
+/** Players must buy the item this much more often (absolute share) when the trait is present... */
+const SWAP_MIN_LIFT = 0.05;
+/** ...by a margin this many standard errors wide, so it isn't chance... */
+const SWAP_MIN_Z = 2.5;
+/** ...in at least this many games, and buying it must not lower the win rate. */
+const SWAP_MIN_BUYERS = 15;
+/** A build only gets a swap its own players make: in this share of its games with the trait. */
+const SWAP_MIN_BUILD_RATE = 0.1;
 const MAX_SWAPS = 4;
 const ORDINAL = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
 
-/**
- * Items this build's players buy noticeably more against a trait, without losing more for it, and
- * that answer the trait according to Riot's item data.
- * Behavior is the main signal: high-elo players adapt their builds to the enemy team. The win
- * rate check keeps a common habit that loses games from becoming advice.
- */
-export function findSwaps(games: BuildGame[], slots: BuildVariant['slots'], items: ItemCatalog): Swap[] {
-  const known = games.filter((g) => g.traits);
-  const winRate = (gs: BuildGame[]) => gs.filter((g) => g.win).length / gs.length;
-  const firstFour = (g: BuildGame) => g.legendaries.slice(0, 4).map((l) => l.id);
-  const mainItem = (slot: Slot) => slots.find((s) => s.slot === slot)?.common[0];
-  const found: (Swap & { score: number })[] = [];
+/** An item players buy more against a trait, found on all of a champion's games in a role. */
+export interface SwapCandidate {
+  itemId: number;
+  trigger: Trait;
+  /** Share of games with / without the trait that bought it among the first four items. */
+  rateOn: number;
+  rateOff: number;
+  /** Games with the trait that bought it. */
+  buyers: number;
+  /** Win rate with the trait when bought, minus when not. */
+  winRateDelta: number;
+}
 
+const firstFour = (g: BuildGame) => g.legendaries.slice(0, 4).map((l) => l.id);
+const winRate = (gs: BuildGame[]) => gs.filter((g) => g.win).length / gs.length;
+
+/**
+ * Items players buy noticeably more against a trait, without losing more for it, and that answer
+ * the trait according to Riot's item data. Behavior is the main signal: players adapt their builds
+ * to the enemy team. The win rate check keeps a common habit that loses games from becoming advice.
+ *
+ * Pass every game of the champion in the role, across ranks and builds: counter-buying is about the
+ * enemy team more than the build, and more games find swaps for more champions. Each build then
+ * keeps only the swaps its own players make (findSwaps).
+ */
+export function swapCandidates(games: BuildGame[], items: ItemCatalog): SwapCandidate[] {
+  const known = games.filter((g) => g.traits);
+  const bought = new Map(known.map((g) => [g, new Set(firstFour(g))]));
+  const found: SwapCandidate[] = [];
   for (const trigger of SWAP_TRIGGERS) {
     const on = known.filter((g) => g.traits!.has(trigger));
     const off = known.filter((g) => !g.traits!.has(trigger));
     if (on.length < SWAP_MIN_SIDE || off.length < SWAP_MIN_SIDE) continue;
-    const candidates = new Set(on.flatMap(firstFour));
-    for (const itemId of candidates) {
+    const ids = new Set(on.flatMap(firstFour));
+    for (const itemId of ids) {
       // Only items that actually answer the trigger, so a chance pattern can't become advice.
       if (!items.counters(itemId).has(trigger)) continue;
-      const boughtOn = on.filter((g) => firstFour(g).includes(itemId));
+      const boughtOn = on.filter((g) => bought.get(g)!.has(itemId));
+      const boughtOff = off.filter((g) => bought.get(g)!.has(itemId)).length;
       const rateOn = boughtOn.length / on.length;
-      const lift = rateOn - off.filter((g) => firstFour(g).includes(itemId)).length / off.length;
-      if (lift < SWAP_MIN_LIFT || rateOn < SWAP_MIN_RATE || boughtOn.length < SWAP_MIN_GAMES) continue;
-      const notBoughtOn = on.filter((g) => !firstFour(g).includes(itemId));
-      if (notBoughtOn.length < SWAP_MIN_GAMES) continue;
-      const delta = winRate(boughtOn) - winRate(notBoughtOn);
-      if (delta < 0) continue;
-
-      // The slot it usually takes, and what it replaces there.
-      const position = mode(boughtOn.map((g) => g.legendaries.findIndex((l) => l.id === itemId)))!;
-      const slot = CORE_SLOTS[Math.min(position, CORE_SLOTS.length - 1)]!;
-      if (mainItem(slot)?.itemId === itemId) continue;
-      const minute = Math.round(boughtOn.reduce((s, g) => s + g.legendaries.find((l) => l.id === itemId)!.minute, 0) / boughtOn.length);
-
-      // The component players pick up first on the way to it.
-      const parts = new Set(items.components(itemId));
-      const firstPart = mode(
-        boughtOn.flatMap((g) => {
-          const done = g.legendaries.find((l) => l.id === itemId)!.minute * 60;
-          const part = g.buys.find(([id, t]) => t < done && parts.has(id) && items.get(id)!.gold.total >= 700);
-          return part ? [part[0]] : [];
-        }),
-      );
-
-      found.push({
-        replacesSlot: slot,
-        itemId,
-        trigger,
-        timing: `Finish it as your ${ORDINAL[position] ?? 'next'} item, around minute ${minute}${firstPart ? `. Start with ${items.name(firstPart)} on an early back` : ''}`,
-        earlyComponents: firstPart ? [firstPart] : [],
-        evidence: { games: boughtOn.length, winRateDelta: Math.round(delta * 1000) / 1000 },
-        score: lift,
-      });
+      const rateOff = boughtOff / off.length;
+      // Two-proportion z-test: is the jump in buy rate bigger than chance would make it?
+      const pooled = (boughtOn.length + boughtOff) / (on.length + off.length);
+      const se = Math.sqrt(pooled * (1 - pooled) * (1 / on.length + 1 / off.length));
+      const lift = rateOn - rateOff;
+      if (lift < SWAP_MIN_LIFT || se === 0 || lift / se < SWAP_MIN_Z || boughtOn.length < SWAP_MIN_BUYERS) continue;
+      const notBoughtOn = on.filter((g) => !bought.get(g)!.has(itemId));
+      if (notBoughtOn.length < SWAP_MIN_BUYERS) continue;
+      const winRateDelta = winRate(boughtOn) - winRate(notBoughtOn);
+      if (winRateDelta < 0) continue;
+      found.push({ itemId, trigger, rateOn, rateOff, buyers: boughtOn.length, winRateDelta });
     }
+  }
+  return found;
+}
+
+const round3 = (x: number) => Math.round(x * 1000) / 1000;
+
+/**
+ * The swaps one build's players make: candidates (by default found on these same games) that this
+ * build's own players buy against the trait, placed in the slot they usually take, with when to buy them.
+ */
+export function findSwaps(games: BuildGame[], slots: BuildVariant['slots'], items: ItemCatalog, candidates = swapCandidates(games, items)): Swap[] {
+  const known = games.filter((g) => g.traits);
+  const mainItem = (slot: Slot) => slots.find((s) => s.slot === slot)?.common[0];
+  const coreMains = new Set((['core-1', 'core-2', 'core-3'] as Slot[]).map((s) => mainItem(s)?.itemId));
+  const found: (Swap & { score: number })[] = [];
+
+  for (const c of candidates) {
+    if (coreMains.has(c.itemId)) continue;
+    const on = known.filter((g) => g.traits!.has(c.trigger));
+    const off = known.filter((g) => !g.traits!.has(c.trigger));
+    const boughtOn = on.filter((g) => firstFour(g).includes(c.itemId));
+    if (boughtOn.length < 3 || boughtOn.length < on.length * SWAP_MIN_BUILD_RATE) continue;
+    const rateOff = off.length ? off.filter((g) => firstFour(g).includes(c.itemId)).length / off.length : 0;
+    if (boughtOn.length / on.length <= rateOff) continue;
+
+    // The slot it usually takes in this build, and what it replaces there.
+    const position = mode(boughtOn.map((g) => g.legendaries.findIndex((l) => l.id === c.itemId)))!;
+    const slot = CORE_SLOTS[Math.min(position, CORE_SLOTS.length - 1)]!;
+    if (mainItem(slot)?.itemId === c.itemId) continue;
+    const minute = Math.round(boughtOn.reduce((s, g) => s + g.legendaries.find((l) => l.id === c.itemId)!.minute, 0) / boughtOn.length);
+
+    // The component players pick up first on the way to it.
+    const parts = new Set(items.components(c.itemId));
+    const firstPart = mode(
+      boughtOn.flatMap((g) => {
+        const done = g.legendaries.find((l) => l.id === c.itemId)!.minute * 60;
+        const part = g.buys.find(([id, t]) => t < done && parts.has(id) && items.get(id)!.gold.total >= 700);
+        return part ? [part[0]] : [];
+      }),
+    );
+
+    found.push({
+      replacesSlot: slot,
+      itemId: c.itemId,
+      trigger: c.trigger,
+      timing: `Finish it as your ${ORDINAL[position] ?? 'next'} item, around minute ${minute}${firstPart ? `. Start with ${items.name(firstPart)} on an early back` : ''}`,
+      earlyComponents: firstPart ? [firstPart] : [],
+      minute,
+      evidence: { games: c.buyers, winRateDelta: round3(c.winRateDelta), buyRate: [round3(c.rateOn), round3(c.rateOff)] },
+      score: c.rateOn - c.rateOff,
+    });
   }
   // One swap per item (its strongest trigger), strongest first.
   const best = new Map<number, Swap & { score: number }>();
   for (const s of found.sort((a, b) => b.score - a.score)) if (!best.has(s.itemId)) best.set(s.itemId, s);
   return [...best.values()].slice(0, MAX_SWAPS).map(({ score: _score, ...s }) => s);
+}
+
+/** Every team trait the app can read in champ select; per-build win rates with each drive the recommendation. */
+const STAT_TRAITS: Trait[] = [...SWAP_TRIGGERS, 'ally-no-ap'];
+
+/** Games and wins for each team trait among a build's games, for recommending a build from the teams. */
+export function traitStatsOf(games: BuildGame[]): NonNullable<BuildVariant['traitStats']> {
+  const stats: NonNullable<BuildVariant['traitStats']> = {};
+  for (const trait of STAT_TRAITS) {
+    const on = games.filter((g) => g.traits?.has(trait));
+    if (on.length > 0) stats[trait] = [on.length, on.filter((g) => g.win).length];
+  }
+  return stats;
 }
 
 /** Share of games that finished each item among their first three. */
@@ -257,6 +321,8 @@ export interface VariantContext {
   items: ItemCatalog;
   styles: PerkStyle[];
   championName: string;
+  /** Swaps found on the champion's games in this role across every rank; by default, on these games alone. */
+  swapCandidates?: SwapCandidate[];
 }
 
 /**
@@ -301,20 +367,21 @@ export function buildVariants(games: BuildGame[], ctx: VariantContext): BuildVar
     const minutes = new Map<number, number[]>();
     for (const g of members) for (const l of g.legendaries) (minutes.get(l.id) ?? minutes.set(l.id, []).get(l.id)!).push(l.minute);
 
-    const slots: BuildVariant['slots'] = [];
+    const counted: BuildVariant['slots'] = [];
     const start = commonSets(members.map((g) => g.start));
-    if (start.length) slots.push({ slot: 'start', common: start });
+    if (start.length) counted.push({ slot: 'start', common: start });
     const firstBack = commonSets(members.filter((g) => g.firstBack.length).map((g) => g.firstBack));
-    if (firstBack.length) slots.push({ slot: 'first-back', common: firstBack });
+    if (firstBack.length) counted.push({ slot: 'first-back', common: firstBack });
     CORE_SLOTS.forEach((slot, k) => {
       const filled = members.filter((g) => g.legendaries[k]);
       const items = common(filled.map((g) => g.legendaries[k]!.id), filled.length, minutes);
-      if (items.length && filled.length >= Math.max(10, members.length * 0.15)) slots.push({ slot, common: items });
+      if (items.length && filled.length >= Math.max(10, members.length * 0.15)) counted.push({ slot, common: items });
     });
     const bootMinutes = new Map<number, number[]>();
     for (const g of members) if (g.boots) (bootMinutes.get(g.boots.id) ?? bootMinutes.set(g.boots.id, []).get(g.boots.id)!).push(g.boots.minute);
     const boots = common(members.map((g) => g.boots?.id), members.length, bootMinutes);
-    if (boots.length) slots.push({ slot: 'boots', common: boots });
+    if (boots.length) counted.push({ slot: 'boots', common: boots });
+    const slots = distinctCorePath(counted);
 
     const label = labelFor(centroid);
     return {
@@ -325,7 +392,8 @@ export function buildVariants(games: BuildGame[], ctx: VariantContext): BuildVar
       skillMaxOrder: maxOrderOf(skillOrder),
       skillOrder,
       slots,
-      swaps: findSwaps(members, slots, ctx.items),
+      swaps: findSwaps(members, slots, ctx.items, ctx.swapCandidates),
+      traitStats: traitStatsOf(members),
       stats: {
         games: members.length,
         pickShare: members.length / usable.length,

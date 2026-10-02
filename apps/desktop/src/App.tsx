@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Badge } from './components/arc/badge/badge';
+import { Button } from './components/arc/button/button';
 import SegmentedControl from './components/arc/segmented-control/segmented-control';
 import { Skeleton } from './components/arc/skeleton/skeleton';
 import {
   BRACKETS, BRACKET_LABELS, BRACKET_RANKS, ROLES, RoleTable, championIconUrl, latestVersion, loadBuildIndex, loadChampions, loadItems,
-  loadLatest, loadRoleData, loadRunes, loadTraitTable,
-  type Bracket, type BuildIndex, type ChampionInfo, type ItemInfo, type Latest, type RuneData,
+  loadLatest, loadPickTable, loadRoleData, loadRunes, loadTraitTable,
+  type Bracket, type BuildIndex, type ChampionInfo, type ItemInfo, type Latest, type PickTable, type RuneData,
 } from '@hexcards/data';
-import type { TraitTable } from '@hexcards/engine';
-import { ChampionBrowser } from './components/ChampionBrowser';
+import { suggestPicks, type TraitTable } from '@hexcards/engine';
+import { ChampionBrowser, type RoleFilter } from './components/ChampionBrowser';
+import { PickSuggestions } from './components/PickSuggestions';
 import { settings } from './lcu/settings';
 import { ChampionView } from './components/ChampionView';
 import { UpdateBanner } from './components/UpdateBanner';
@@ -23,7 +25,11 @@ type GameData =
   | { status: 'ready'; version: string; items: Map<number, ItemInfo>; champions: Map<number, ChampionInfo> };
 
 /** One rank bracket's published data. */
-type BracketData = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; index: BuildIndex; roles: RoleTable };
+interface BracketData {
+  bracket: Bracket;
+  index: BuildIndex;
+  roles: RoleTable;
+}
 
 /** Published builds: the pipeline's output, served by Vite in development and GitHub Pages in releases. */
 const BUILDS_BASE = (import.meta.env.VITE_BUILDS_URL as string | undefined) ?? '/builds';
@@ -46,8 +52,14 @@ export function App() {
   const [latest, setLatest] = useState<Latest | null>(null);
   const [latestError, setLatestError] = useState<string | null>(null);
   const [bracket, setBracket] = useState<Bracket>('pro');
-  const [bracketData, setBracketData] = useState<BracketData>({ status: 'loading' });
+  // Every bracket's data, loaded up front: switching rank is instant, and pages can compare a
+  // champion's tier across ranks.
+  const [loaded, setLoaded] = useState<Partial<Record<Bracket, BracketData>>>({});
+  const [bracketError, setBracketError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
   const [traitTable, setTraitTable] = useState<TraitTable | null>(null);
+  // Lives here rather than in the browser, so it also survives opening a champion and coming back.
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
 
   // Read after mount: storage isn't available during the first render in every environment.
   const [recentIds, setRecentIds] = useState<number[]>([]);
@@ -98,17 +110,43 @@ export function App() {
   // Fall back to a bracket that has data if the saved one doesn't yet.
   const activeBracket: Bracket = available.includes(bracket) ? bracket : (available[available.length - 1] ?? bracket);
 
+  // The chosen bracket first, so it shows as soon as it arrives, then the others. Brackets already
+  // loaded are kept; only a failed or missing one is fetched again.
+  const loadedRef = useRef(loaded);
+  useEffect(() => {
+    loadedRef.current = loaded;
+  }, [loaded]);
   useEffect(() => {
     if (!latest) return;
     let cancelled = false;
-    setBracketData({ status: 'loading' });
-    Promise.all([loadBuildIndex(BUILDS_BASE, latest.patch, activeBracket), loadRoleData(BUILDS_BASE, latest.patch, activeBracket)])
-      .then(([index, roleData]) => !cancelled && setBracketData({ status: 'ready', index, roles: new RoleTable(roleData) }))
-      .catch((err: Error) => !cancelled && setBracketData({ status: 'error', message: err.message }));
+    setBracketError(null);
+    const load = async (b: Bracket) => {
+      if (loadedRef.current[b]) return;
+      const [index, roleData] = await Promise.all([loadBuildIndex(BUILDS_BASE, latest.patch, b), loadRoleData(BUILDS_BASE, latest.patch, b)]);
+      if (!cancelled) setLoaded((prev) => ({ ...prev, [b]: { bracket: b, index, roles: new RoleTable(roleData) } }));
+    };
+    load(activeBracket)
+      .catch((err: Error) => !cancelled && setBracketError(err.message))
+      // Other brackets only matter once chosen, and choosing one retries it.
+      .then(() => Promise.allSettled(available.filter((b) => b !== activeBracket).map(load)));
     return () => {
       cancelled = true;
     };
-  }, [latest, activeBracket]);
+  }, [latest, available, activeBracket, retry]);
+
+  // What's on screen: the chosen bracket, or the last one shown while it loads, so the browser and
+  // champion page stay mounted and keep their filters, role and build choice.
+  const [lastShown, setLastShown] = useState<Bracket | null>(null);
+  const chosen = loaded[activeBracket];
+  useEffect(() => {
+    if (chosen) setLastShown(chosen.bracket);
+  }, [chosen]);
+  const bracketData = chosen ?? (lastShown ? loaded[lastShown] : undefined) ?? null;
+  const switching = !!bracketData && bracketData.bracket !== activeBracket && !bracketError;
+  const rolesByBracket = useMemo(
+    () => available.flatMap((b) => (loaded[b] ? [{ bracket: b, roles: loaded[b].roles }] : [])),
+    [available, loaded],
+  );
 
   // In champ select, follow your pick. You can still browse away; a new pick brings you back.
   const pick = myPick(client.session);
@@ -121,7 +159,7 @@ export function App() {
   const pickedChampion = pickId ? champions?.get(pickId) : undefined;
   const enemies = (client.session?.theirTeam ?? []).map((p) => champions?.get(p.championId)).filter((c): c is ChampionInfo => !!c);
   const selected = selectedId ? champions?.get(selectedId) : undefined;
-  const index = bracketData.status === 'ready' ? bracketData.index : null;
+  const index = bracketData?.index ?? null;
   const hasBuild = (id: number) => !!index?.champions[id];
   const pickRole = ROLES.find((r) => r === pick?.role);
   const session = client.session;
@@ -145,6 +183,32 @@ export function App() {
         })
     : [];
 
+  // Pick suggestions: the bracket's pick table is only loaded in champ select (about 60 KB).
+  const [pickTable, setPickTable] = useState<{ bracket: Bracket; table: PickTable } | null>(null);
+  const shownBracket = bracketData?.bracket;
+  useEffect(() => {
+    if (!session || !latest || !shownBracket || pickTable?.bracket === shownBracket) return;
+    let cancelled = false;
+    loadPickTable(BUILDS_BASE, latest.patch, shownBracket)
+      .then((table) => !cancelled && setPickTable({ bracket: shownBracket, table }))
+      .catch(() => {
+        // Builds published before pick tables existed: no suggestions, everything else works.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [!!session, latest, shownBracket]);
+  const picks = pickTable && pickTable.bracket === shownBracket ? pickTable.table : undefined;
+
+  const suggestions = useMemo(() => {
+    if (!session || !pickRole || !picks || !traitTable || !bracketData || !matchup) return null;
+    const others = session.myTeam.filter((p) => p.cellId !== session.localPlayerCellId).map((p) => p.championId || p.championPickIntent);
+    const unavailable = new Set([...others, ...matchup.enemies, ...(session.bans?.myTeamBans ?? []), ...(session.bans?.theirTeamBans ?? [])]);
+    return suggestPicks({
+      role: pickRole, picks, roles: bracketData.roles, traitTable, allies: matchup.allies, enemies: matchup.enemies, unavailable, owned: client.owned,
+    });
+  }, [session, pickRole, picks, traitTable, bracketData, client.owned]);
+
   const chooseBracket = (b: Bracket) => {
     setBracket(b);
     settings.setBracket(b);
@@ -165,9 +229,9 @@ export function App() {
               options={available.map((b) => ({ value: b, label: BRACKET_LABELS[b] }))}
             />
           )}
-          {index && (
+          {bracketData && index && (
             <Badge tone="neutral" size="sm">
-              {BRACKET_RANKS[activeBracket]} · patch {index.patch} · {index.games.toLocaleString()} games
+              {BRACKET_RANKS[bracketData.bracket]} · patch {index.patch} · {index.games.toLocaleString()} games
             </Badge>
           )}
           {latestError && <Badge tone="warning" size="sm">Builds unavailable</Badge>}
@@ -196,45 +260,75 @@ export function App() {
               ))}
             </div>
           )}
+          {game.status === 'ready' && pickRole && suggestions && suggestions.suggestions.length > 0 && (
+            <PickSuggestions
+              version={game.version}
+              champions={game.champions}
+              role={pickRole}
+              opponent={suggestions.opponent}
+              suggestions={suggestions.suggestions}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
+          )}
         </section>
       )}
 
-      {(game.status === 'loading' || (!latestError && bracketData.status === 'loading')) && <Skeleton label="Loading champions" lines={6} />}
+      {(game.status === 'loading' || (!latestError && !bracketData && !bracketError)) && <Skeleton label="Loading champions" lines={6} />}
       {game.status === 'error' && (
         <p className={styles.error}>Couldn't load champion and item data from Riot. Check your connection and restart. ({game.message})</p>
       )}
-      {(latestError || bracketData.status === 'error') && (
-        <p className={styles.error}>
-          Couldn't load builds. Check your connection and restart. ({latestError ?? (bracketData.status === 'error' ? bracketData.message : '')})
-        </p>
+      {latestError && <p className={styles.error}>Couldn't load builds. Check your connection and restart. ({latestError})</p>}
+      {bracketError && (
+        <div className={styles.errorRow} role="alert">
+          <p className={styles.error}>
+            Couldn't load {BRACKET_LABELS[activeBracket]} builds
+            {bracketData ? `, so ${BRACKET_LABELS[bracketData.bracket]} is still showing` : ''}. Check your connection and try again. ({bracketError})
+          </p>
+          <Button variant="secondary" size="sm" onClick={() => setRetry((n) => n + 1)}>Try again</Button>
+        </div>
       )}
-      {game.status === 'ready' && bracketData.status === 'ready' && latest &&
-        (selected ? (
-          <ChampionView
-            key={`${selected.id}-${activeBracket}`}
-            version={game.version}
-            items={game.items}
-            runes={runes}
-            champion={selected}
-            source={hasBuild(selected.id) ? { base: BUILDS_BASE, patch: latest.patch, bracket: activeBracket } : null}
-            preferredRole={selected.id === pickId ? pickRole : undefined}
-            matchup={selected.id === pickId ? matchup : undefined}
-            connected={client.connected}
-            inChampSelect={!!client.session}
-            onBack={() => setSelectedId(null)}
-          />
-        ) : (
-          <ChampionBrowser
-            version={game.version}
-            champions={[...game.champions.values()]}
-            featured={popular}
-            recent={recentIds.flatMap((id) => game.champions.get(id) ?? [])}
-            roles={bracketData.roles}
-            bracket={activeBracket}
-            hasBuild={hasBuild}
-            onSelect={setSelectedId}
-          />
-        ))}
+      {game.status === 'ready' && bracketData && latest && (
+        // Dims while the next rank's data loads; what's on screen stays put so filters and scroll survive.
+        <div className={styles.content} aria-busy={switching || undefined} data-switching={switching || undefined}>
+          {selected ? (
+            <ChampionView
+              key={selected.id}
+              version={game.version}
+              items={game.items}
+              runes={runes}
+              champion={selected}
+              source={hasBuild(selected.id) ? { base: BUILDS_BASE, patch: latest.patch, bracket: bracketData.bracket } : null}
+              roles={bracketData.roles}
+              bracket={bracketData.bracket}
+              rolesByBracket={rolesByBracket}
+              // In champ select, every champion you look at opens in your role and lights up swaps for these teams,
+              // not just the one you're hovering.
+              preferredRole={pickRole}
+              matchup={matchup}
+              picks={picks}
+              champions={game.champions}
+              connected={client.connected}
+              inChampSelect={!!client.session}
+              onBack={() => setSelectedId(null)}
+            />
+          ) : (
+            <ChampionBrowser
+              version={game.version}
+              champions={[...game.champions.values()]}
+              featured={popular}
+              recent={recentIds.flatMap((id) => game.champions.get(id) ?? [])}
+              roles={bracketData.roles}
+              rolesByBracket={rolesByBracket}
+              bracket={bracketData.bracket}
+              role={roleFilter}
+              onRoleChange={setRoleFilter}
+              hasBuild={hasBuild}
+              onSelect={setSelectedId}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

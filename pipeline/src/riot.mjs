@@ -65,8 +65,6 @@ export const REGIONS = [
   { platform: 'kr', regional: 'asia' },
 ];
 
-export const RANKED_SOLO = 420;
-
 /** Riot's API key from the environment, loading the repo's .env when present. */
 export function riotKeyFromEnv() {
   try {

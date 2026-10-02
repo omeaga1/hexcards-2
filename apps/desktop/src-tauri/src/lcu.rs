@@ -28,6 +28,8 @@ const ALLOWED: &[(&str, &str)] = &[
     ("GET", "/lol-summoner/v1/current-summoner"),
     ("GET", "/lol-gameflow/v1/gameflow-phase"),
     ("GET", "/lol-champ-select/v1/session"),
+    // Which champions you own, so champ select suggestions are ones you can pick.
+    ("GET", "/lol-champions/v1/owned-champions-minimal"),
     ("PATCH", "/lol-champ-select/v1/session/my-selection"),
     ("GET", "/lol-perks/v1/styles"),
     ("GET", "/lol-perks/v1/pages"),
@@ -112,6 +114,8 @@ mod tests {
         assert!(is_allowed("GET", "/lol-perks/v1/pages"));
         assert!(is_allowed("put", "/lol-perks/v1/pages/123"));
         assert!(is_allowed("PUT", "/lol-item-sets/v1/item-sets/9876/sets"));
+        assert!(is_allowed("GET", "/lol-champions/v1/owned-champions-minimal"));
+        assert!(!is_allowed("POST", "/lol-champions/v1/owned-champions-minimal"));
         assert!(!is_allowed("DELETE", "/lol-perks/v1/pages/123"));
         assert!(!is_allowed("GET", "/lol-perks/v1/pages/123/../../x"));
         assert!(!is_allowed("POST", "/lol-login/v1/session"));

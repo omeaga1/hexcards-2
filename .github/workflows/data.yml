@@ -59,14 +59,14 @@ jobs:
       - name: Collect
         # Collection stopping early (key expired, Riot outage) shouldn't block publishing what we have.
         continue-on-error: true
-        run: node pipeline/src/collect.mjs --per-region 4000 --minutes "${{ inputs.minutes || '300' }}"
+        run: node pipeline/src/collect.mjs --patch "${{ steps.patch.outputs.patch }}" --per-region 4000 --minutes "${{ inputs.minutes || '300' }}"
 
       - name: Save collected games
         run: bash pipeline/data-release.sh save "${{ steps.patch.outputs.patch }}"
 
       - name: Build
         run: |
-          npx tsx pipeline/src/build.ts --out site/builds
+          npx tsx pipeline/src/build.ts --patch "${{ steps.patch.outputs.patch }}" --out site/builds
           # The landing page and static files (riot.txt for Riot's product URL verification), with the
           # app's Arc design tokens so the site and app look the same.
           cp -r pages/. site/
