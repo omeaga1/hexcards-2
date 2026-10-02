@@ -56,6 +56,37 @@
   gap: var(--space-2);
 }
 
+/* Two-sided slot card. Both faces share one grid cell; the swap face starts turned away. */
+.flip {
+  display: grid;
+  width: fit-content;
+  perspective: 600px;
+}
+
+.face {
+  grid-area: 1 / 1;
+  align-self: start;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  transition: transform var(--duration-spring) var(--ease-spring);
+}
+.back { transform: rotateY(-180deg); pointer-events: none; }
+.flip[data-flipped] .face:not(.back) { transform: rotateY(180deg); pointer-events: none; }
+.flip[data-flipped] .back { transform: rotateY(0deg); pointer-events: auto; }
+
+/* When it lands, the swap gives off one pulse of accent light. */
+.flip[data-flipped] .back .litItem { animation: land var(--duration-considered) var(--ease-enter) var(--duration-standard) both; }
+@keyframes land {
+  from { box-shadow: 0 0 0 1px var(--accent), 0 0 0 0 var(--accent-subtle); }
+  50% { box-shadow: 0 0 0 1px var(--accent), 0 0 0 var(--space-3) var(--accent-subtle); }
+  to { box-shadow: 0 0 0 1px var(--accent), 0 0 0 var(--space-4) transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .face { transition: none; }
+  .flip[data-flipped] .back .litItem { animation: none; }
+}
+
 /* A lit swap takes the slot: accent ring around its icon. */
 .litItem {
   width: fit-content;

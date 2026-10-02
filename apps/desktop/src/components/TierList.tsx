@@ -14,7 +14,7 @@ interface TierListProps {
 }
 
 export function TierList({ role, list, champions, hasBuild, onSelect }: TierListProps) {
-  const entry = (e: TierEntry) => {
+  const entry = (e: TierEntry, tier?: string) => {
     const c = champions.get(e.championId);
     if (!c) return null;
     return (
@@ -30,8 +30,10 @@ export function TierList({ role, list, champions, hasBuild, onSelect }: TierList
             </dl>
           }
         >
-          <button type="button" className={styles.entry} data-no-build={!hasBuild(c.id) || undefined} onClick={() => onSelect(e.championId)}>
-            <img className={styles.art} src={championTileUrl(c.key)} alt="" loading="lazy" draggable={false} />
+          <button type="button" className={styles.entry} data-tier={tier} data-no-build={!hasBuild(c.id) || undefined} onClick={() => onSelect(e.championId)}>
+            <span className={styles.artWrap}>
+              <img className={styles.art} src={championTileUrl(c.key)} alt="" loading="lazy" draggable={false} />
+            </span>
             <span className={styles.text}>
               <span className={styles.name}>
                 {c.name}
@@ -53,8 +55,8 @@ export function TierList({ role, list, champions, hasBuild, onSelect }: TierList
       {ranked ? (
         list.tiers.map(({ tier, entries }) => (
           <section key={tier} className={styles.tier} aria-label={`${tier} tier`}>
-            <div className={styles.letter} data-tier={tier}>{tier}</div>
-            {entries.length > 0 ? <ul className={styles.entries}>{entries.map(entry)}</ul> : <p className={styles.none}>None this patch</p>}
+            <div className={styles.letter} data-tier={tier}><span>{tier}</span></div>
+            {entries.length > 0 ? <ul className={styles.entries}>{entries.map((e) => entry(e, tier))}</ul> : <p className={styles.none}>None this patch</p>}
           </section>
         ))
       ) : (
@@ -65,7 +67,7 @@ export function TierList({ role, list, champions, hasBuild, onSelect }: TierList
         <section className={styles.lowSample} aria-labelledby="low-sample-heading">
           <h2 id="low-sample-heading" className={styles.lowTitle}>Too few games to rank</h2>
           <p className={styles.caption}>Seen in {ROLE_LABELS[role]} fewer than {MIN_TIER_GAMES} times.</p>
-          <ul className={styles.entries}>{list.lowSample.map(entry)}</ul>
+          <ul className={styles.entries}>{list.lowSample.map((e) => entry(e))}</ul>
         </section>
       )}
     </div>

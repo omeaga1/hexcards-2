@@ -1,23 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from './arc/button/button';
-import { RadioCards } from './arc/radio-cards/radio-cards';
-import SegmentedControl from './arc/segmented-control/segmented-control';
 import { Skeleton } from './arc/skeleton/skeleton';
 import { Switch } from './arc/switch/switch';
 import {
-  ROLE_LABELS, TRAIT_LABELS, championIconUrl, loadAbilities, loadChampionBuilds,
+  ROLE_LABELS, TRAIT_LABELS, championIconUrl, championSplashUrl, loadAbilities, loadChampionBuilds,
   type AbilityInfo, type Bracket, type ChampionBuilds, type ChampionInfo, type ItemInfo, type Role, type RuneData, type Trait,
 } from '@hexcards/data';
 import { matchupTraits, type TraitTable } from '@hexcards/engine';
+import { BuildDeck } from './BuildDeck';
 import { BuildLane } from './BuildLane';
 import { ImportPanel } from './ImportPanel';
+import { RolePills } from './RolePills';
 import { RunePage } from './RunePage';
 import { SkillOrder } from './SkillOrder';
 import styles from './ChampionView.module.css';
 
 const SPELL_NAMES: Record<number, string> = { 4: 'Flash', 12: 'Teleport', 14: 'Ignite', 11: 'Smite', 6: 'Ghost', 3: 'Exhaust', 7: 'Heal', 21: 'Barrier', 1: 'Cleanse' };
-const percent = (share: number) => `${Math.round(share * 100)}%`;
 
 interface ChampionViewProps {
   version: string;
@@ -80,8 +79,9 @@ export function ChampionView({ version, items, runes, champion, source, preferre
       </div>
 
       <section className={styles.champion}>
+        <img className={styles.banner} src={championSplashUrl(champion.key)} alt="" draggable={false} />
         <img className={styles.championIcon} src={championIconUrl(version, champion.key)} alt="" />
-        <div>
+        <div className={styles.name}>
           <h1 className={styles.title}>{champion.name}</h1>
           {current && (
             <p className={styles.subtitle}>
@@ -90,13 +90,9 @@ export function ChampionView({ version, items, runes, champion, source, preferre
           )}
         </div>
         {roles.length > 1 && role && (
-          <SegmentedControl
-            className={styles.roleSwitch}
-            label="Role"
-            value={role}
-            onValueChange={(v) => setRole(v as Role)}
-            options={roles.map((r) => ({ value: r.role, label: ROLE_LABELS[r.role] }))}
-          />
+          <div className={styles.roleSwitch}>
+            <RolePills roles={roles.map((r) => r.role)} value={role} onValueChange={setRole} />
+          </div>
         )}
       </section>
 
@@ -112,15 +108,15 @@ export function ChampionView({ version, items, runes, champion, source, preferre
       ) : builds.status === 'error' ? (
         <p className={styles.note}>Couldn't load {champion.name}'s builds. ({builds.message})</p>
       ) : current ? (
-        <Builds key={current.role} version={version} items={items} runes={runes} abilities={abilities} builds={current} championName={champion.name} matchup={matchup} connected={connected} inChampSelect={inChampSelect} />
+        <Builds key={current.role} version={version} items={items} runes={runes} abilities={abilities} builds={current} champion={champion} matchup={matchup} connected={connected} inChampSelect={inChampSelect} />
       ) : null}
     </div>
   );
 }
 
-type BuildsProps = Omit<ChampionViewProps, 'champion' | 'onBack' | 'source' | 'preferredRole'> & { builds: ChampionBuilds; championName: string; abilities: AbilityInfo[] | null };
+type BuildsProps = Omit<ChampionViewProps, 'onBack' | 'source' | 'preferredRole'> & { builds: ChampionBuilds; abilities: AbilityInfo[] | null };
 
-function Builds({ version, items, runes, abilities, builds, championName, matchup, connected, inChampSelect }: BuildsProps) {
+function Builds({ version, items, runes, abilities, builds, champion, matchup, connected, inChampSelect }: BuildsProps) {
   const [variantId, setVariantId] = useState(builds.variants[0]!.id);
   const [traits, setTraits] = useState<Set<Trait>>(new Set());
   // In champ select, the teams decide which swaps light up, and update as picks lock in.
@@ -143,23 +139,17 @@ function Builds({ version, items, runes, abilities, builds, championName, matchu
 
   return (
     <>
-      <section className={styles.section} aria-labelledby="builds-heading">
-        <h2 id="builds-heading" className={styles.sectionTitle}>Builds</h2>
-        <RadioCards
-          layout="grid"
-          minColumnWidth={220}
-          value={variantId}
-          onValueChange={setVariantId}
-          options={builds.variants.map((v) => ({
-            value: v.id,
-            // The page is already about this champion, so "Caitlyn Crit: The Collector" reads "Crit: The Collector".
-            label: v.label.startsWith(`${championName} `) ? v.label.slice(championName.length + 1) : v.label,
-            description: `${(v.stats.winRate * 100).toFixed(1)}% win rate · played in ${percent(v.stats.pickShare)} of ${v.stats.games.toLocaleString()} games`,
-          }))}
-        />
-      </section>
+      <div className={styles.hand}>
+        <section className={styles.section} aria-labelledby="builds-heading">
+          <div className={styles.sectionHead}>
+            <h2 id="builds-heading" className={styles.sectionTitle}>Builds</h2>
+            {builds.variants.length > 1 && <p className={styles.note}>{builds.variants.length} ways to play {champion.name}. Pick a card.</p>}
+          </div>
+          <BuildDeck version={version} champion={champion} variants={builds.variants} items={items} value={variant.id} onValueChange={setVariantId} />
+        </section>
 
-      <ImportPanel champion={builds} variant={variant} activeSwaps={activeSwaps} connected={connected} inChampSelect={inChampSelect} />
+        <ImportPanel champion={builds} variant={variant} activeSwaps={activeSwaps} connected={connected} inChampSelect={inChampSelect} />
+      </div>
 
       <div className={styles.runesAndSkills}>
         <section className={styles.panel} aria-labelledby="runes-heading">

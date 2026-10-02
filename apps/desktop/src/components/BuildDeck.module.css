@@ -1,0 +1,21 @@
+/* A hand of up to three cards. Room above for the selected card to rise and for the tilt. */
+.deck {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  padding-top: var(--space-4);
+  perspective: 1200px;
+}
+
+.slot {
+  width: 12.5rem;
+  transform-origin: 50% 120%;
+}
+
+.item {
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--space-1);
+  border: 1px solid var(--card-stamp);
+  display: block;
+}

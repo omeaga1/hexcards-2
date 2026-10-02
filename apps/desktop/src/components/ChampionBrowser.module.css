@@ -125,61 +125,21 @@
 }
 .sectionTitle img { width: var(--space-6); height: var(--space-6); }
 
-/* Builds ready: wide splash cards, the one large visual on the page. */
+/* Most played: a short hand of Hex Cards, the one large visual on the page. */
 .featured {
   display: grid;
   gap: var(--space-4);
 }
 
 .featuredRow {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
-  gap: var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  padding-top: var(--space-2);
+  perspective: 1200px;
 }
 
-.feature {
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-surface);
-  background: var(--surface-raised);
-  color: var(--foreground);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  overflow: hidden;
-  display: grid;
-  transition: border-color var(--duration-fast) var(--ease-standard);
-}
-.feature:hover { border-color: var(--accent); }
-
-.splash {
-  width: 100%;
-  aspect-ratio: 16 / 7;
-  object-fit: cover;
-  object-position: center 20%;
-  display: block;
-  transition: transform var(--duration-considered) var(--ease-standard);
-}
-.feature:hover .splash { transform: scale(1.03); }
-
-.featureText {
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-4) var(--space-5) var(--space-5);
-  position: relative;
-  background: var(--surface-raised);
-}
-
-.featureName {
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: var(--text-xl);
-}
-
-.featureMeta {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
+.featureSlot { width: 12.5rem; }
 
 /* Champion tiles: square splash crops with name and roles underneath. */
 .grid {
@@ -264,8 +224,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .roleButton, .feature, .splash, .art, .art img, .recentButton { transition: none; }
-  .feature:hover .splash, .tile:hover .art img { transform: none; }
+  .roleButton, .art, .art img, .recentButton { transition: none; }
+  .tile:hover .art img { transform: none; }
 }
 
 @media (max-width: 900px) {

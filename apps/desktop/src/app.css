@@ -14,3 +14,32 @@ h1, h2, h3 {
   font-weight: 500;
   line-height: var(--leading-display);
 }
+
+/*
+ * Hex Cards tokens: the trading card look (foil, glare, text over art) and the pressable import key.
+ * Text on art stays light in both themes because the art underneath is always a dark-scrimmed painting.
+ */
+:root {
+  --holo-foil: linear-gradient(
+    115deg,
+    oklch(72% .19 20) 0%, oklch(84% .16 85) 16%, oklch(82% .17 150) 32%,
+    oklch(76% .15 220) 48%, oklch(68% .2 295) 64%, oklch(76% .17 350) 80%, oklch(72% .19 20) 100%
+  );
+  /* Fine diagonal lines printed over the foil, like the grain on a real holo card. */
+  --holo-grain: repeating-linear-gradient(115deg, oklch(100% 0 0 / 0) 0 5px, oklch(100% 0 0 / .14) 6px, oklch(100% 0 0 / 0) 8px);
+  --holo-glare: oklch(100% 0 0 / .7);
+  --card-scrim: linear-gradient(to top, oklch(13% .01 290 / .96) 0%, oklch(13% .01 290 / .72) 34%, oklch(13% .01 290 / 0) 64%);
+  --card-scrim-top: linear-gradient(to bottom, oklch(13% .01 290 / .7) 0%, oklch(13% .01 290 / 0) 26%);
+  --card-on-art: oklch(98% 0 0);
+  --card-on-art-muted: oklch(86% 0 0);
+  --card-stamp: oklch(13% .01 290 / .62);
+  --card-shadow: 0 2px 4px oklch(0% 0 0 / .25), 0 18px 36px oklch(0% 0 0 / .32);
+  --card-shadow-lifted: 0 4px 10px oklch(0% 0 0 / .3), 0 30px 60px oklch(0% 0 0 / .45);
+
+  --key-socket: color-mix(in oklch, var(--background) 70%, oklch(0% 0 0));
+  --key-socket-shadow: inset 0 1px 3px oklch(0% 0 0 / .45), inset 0 -1px 1px oklch(100% 0 0 / .06);
+  --key-cap: linear-gradient(to bottom, color-mix(in oklch, var(--surface-raised) 70%, oklch(100% 0 0)), var(--surface-raised));
+  --key-cap-edge: inset 0 -4px 0 oklch(0% 0 0 / .28), inset 0 1px 0 oklch(100% 0 0 / .14), 0 1px 1px oklch(0% 0 0 / .3), 0 6px 14px oklch(0% 0 0 / .3);
+  --key-cap-edge-pressed: inset 0 -1px 0 oklch(0% 0 0 / .28), inset 0 1px 0 oklch(100% 0 0 / .1), 0 1px 1px oklch(0% 0 0 / .3);
+  --key-led-off: oklch(40% 0 0);
+}

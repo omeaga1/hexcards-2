@@ -84,6 +84,8 @@ export function BuildLane({ version, variant, items, activeSwaps }: BuildLanePro
           const [main, ...alternatives] = common;
           const swaps = variant.swaps.filter((s) => stage.slots.includes(s.replacesSlot));
           const lit = swaps.find((s) => activeSwaps.includes(s));
+          // The back of the slot's card: the lit swap, or the first one, ready to flip to.
+          const flipTo = lit ?? swaps[0];
 
           return (
             <li key={stage.label} className={styles.stage}>
@@ -95,31 +97,40 @@ export function BuildLane({ version, variant, items, activeSwaps }: BuildLanePro
                     <ItemIcon key={c.itemId} version={version} itemId={c.itemId} item={items.get(c.itemId)} size="lg" details={[`Built in ${percent(c.share)} of games`]} />
                   ))}
                 </div>
-              ) : lit ? (
-                <>
-                  <div className={styles.litItem}>
-                    <ItemIcon version={version} itemId={lit.itemId} item={items.get(lit.itemId)} size="lg" details={[`Swap ${TRAIT_LABELS[lit.trigger]}`]} />
-                  </div>
-                  <div className={styles.mainName}>
-                    <span>{nameOf(lit.itemId)}</span>
-                    <span className={styles.litNote}>Swap {TRAIT_LABELS[lit.trigger]}</span>
-                  </div>
-                  <div className={styles.replaced}>
-                    <ItemIcon version={version} itemId={main!.itemId} item={items.get(main!.itemId)} size="sm" dimmed />
-                    <span>Instead of {nameOf(main!.itemId)}</span>
-                  </div>
-                </>
               ) : (
                 <>
-                  <div className={styles.main}>
-                    <ItemIcon version={version} itemId={main!.itemId} item={items.get(main!.itemId)} size="lg" details={[`Built in ${percent(main!.share)} of games`]} />
+                  {/* The slot is a two-sided card: the usual item on the front, the swap on the back. It flips when the swap lights up. */}
+                  <div className={styles.flip} data-flipped={lit ? '' : undefined}>
+                    <div className={styles.face} aria-hidden={!!lit}>
+                      <ItemIcon version={version} itemId={main!.itemId} item={items.get(main!.itemId)} size="lg" details={[`Built in ${percent(main!.share)} of games`]} />
+                    </div>
+                    {flipTo && (
+                      <div className={`${styles.face} ${styles.back}`} aria-hidden={!lit}>
+                        <div className={styles.litItem}>
+                          <ItemIcon version={version} itemId={flipTo.itemId} item={items.get(flipTo.itemId)} size="lg" details={[`Swap ${TRAIT_LABELS[flipTo.trigger]}`]} />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className={styles.mainName}>
-                    <span>{nameOf(main!.itemId)}</span>
-                    <span className={styles.share}>
-                      {percent(main!.share)} of games{main!.avgMinute ? ` · ~${Math.round(main!.avgMinute)} min` : ''}
-                    </span>
-                  </div>
+                  {lit ? (
+                    <>
+                      <div className={styles.mainName}>
+                        <span>{nameOf(lit.itemId)}</span>
+                        <span className={styles.litNote}>Swap {TRAIT_LABELS[lit.trigger]}</span>
+                      </div>
+                      <div className={styles.replaced}>
+                        <ItemIcon version={version} itemId={main!.itemId} item={items.get(main!.itemId)} size="sm" dimmed />
+                        <span>Instead of {nameOf(main!.itemId)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className={styles.mainName}>
+                      <span>{nameOf(main!.itemId)}</span>
+                      <span className={styles.share}>
+                        {percent(main!.share)} of games{main!.avgMinute ? ` · ~${Math.round(main!.avgMinute)} min` : ''}
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
 

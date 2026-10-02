@@ -24,8 +24,22 @@
   font-size: var(--text-3xl);
   color: var(--text-secondary);
 }
-/* Only S takes the accent; lower tiers step down in contrast. */
-.letter[data-tier="S"] { background: var(--accent-subtle); color: var(--accent-strong); }
+/* Only S is printed in foil; lower tiers step down in contrast. */
+.letter[data-tier="S"] {
+  background: var(--accent-subtle);
+  color: var(--accent-strong);
+}
+@supports (background-clip: text) {
+  .letter[data-tier="S"] span {
+    background: var(--holo-foil);
+    background-size: 300% 100%;
+    background-position: 0% 50%;
+    background-clip: text;
+    color: transparent;
+    transition: background-position var(--duration-spring) var(--ease-spring);
+  }
+  .tier:hover .letter[data-tier="S"] span { background-position: 100% 50%; }
+}
 .letter[data-tier="A"] { color: var(--foreground); }
 .letter[data-tier="D"] { color: var(--text-muted); }
 
@@ -55,7 +69,29 @@
 }
 .entry:hover { background: var(--surface-muted); border-color: var(--border); }
 
+/* S tier art carries a foil sheet that sweeps across on hover, like tilting a holo card in the light. */
+.artWrap {
+  position: relative;
+  flex: none;
+  display: block;
+  border-radius: var(--space-3);
+  overflow: hidden;
+}
+.entry[data-tier="S"] .artWrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--holo-grain), var(--holo-foil);
+  background-size: 100% 100%, 300% 300%;
+  background-position: 0 0, 0% 0%;
+  mix-blend-mode: color-dodge;
+  opacity: .22;
+  transition: background-position var(--duration-considered) var(--ease-standard), opacity var(--duration-standard) var(--ease-standard);
+}
+.entry[data-tier="S"]:hover .artWrap::after { background-position: 0 0, 100% 100%; opacity: .5; }
+
 .art {
+  display: block;
   width: var(--space-12);
   height: var(--space-12);
   flex: none;
@@ -117,7 +153,7 @@
 .cardTitle { font-weight: 500; margin-bottom: var(--space-1); }
 
 @media (prefers-reduced-motion: reduce) {
-  .entry { transition: none; }
+  .entry, .letter[data-tier="S"] span, .entry[data-tier="S"] .artWrap::after { transition: none; }
 }
 
 @media (max-width: 640px) {

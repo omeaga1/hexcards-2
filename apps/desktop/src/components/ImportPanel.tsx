@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from './arc/button/button';
 import { Switch } from './arc/switch/switch';
 import type { BuildVariant, ChampionBuilds, LcuPerkPage, Swap } from '@hexcards/data';
 import { ImportError, importItemSets, importRunes, importSpells } from '@hexcards/engine';
+import { PressKey, type KeyLight } from './PressKey';
 import { lcuClient } from '../lcu/useLeagueClient';
 import { settings } from '../lcu/settings';
 import styles from './ImportPanel.module.css';
@@ -25,6 +26,8 @@ interface ImportPanelProps {
 export function ImportPanel({ champion, variant, activeSwaps, connected, inChampSelect }: ImportPanelProps) {
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [flashOnF, setFlashOnF] = useState(settings.flashKey() === 'F');
+  // A result belongs to the build it imported; picking another build clears it.
+  useEffect(() => setStatus({ kind: 'idle' }), [variant.id]);
 
   const run = async (replacePageId?: number) => {
     setStatus({ kind: 'running' });
@@ -54,6 +57,11 @@ export function ImportPanel({ champion, variant, activeSwaps, connected, inChamp
   };
 
   const disabledReason = !connected ? 'Open League to import.' : null;
+  const light: KeyLight = !connected ? 'off'
+    : status.kind === 'running' ? 'busy'
+    : status.kind === 'done' ? 'done'
+    : status.kind === 'error' ? 'error'
+    : 'ready';
 
   return (
     <section className={styles.panel} aria-labelledby="import-heading">
@@ -71,9 +79,9 @@ export function ImportPanel({ champion, variant, activeSwaps, connected, inChamp
               settings.setFlashKey(on ? 'F' : 'D');
             }}
           />
-          <Button variant="primary" disabled={!connected} loading={status.kind === 'running'} onClick={() => void run()}>
-            Import
-          </Button>
+          <PressKey light={light} disabled={!connected || status.kind === 'running'} onPress={() => void run()}>
+            {status.kind === 'running' ? 'Importing' : status.kind === 'done' ? 'Imported' : 'Import'}
+          </PressKey>
         </div>
       </div>
 

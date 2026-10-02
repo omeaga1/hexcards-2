@@ -116,4 +116,6 @@ const artKey = (championKey: string) => ART_KEYS[championKey] ?? championKey;
 export const championTileUrl = (championKey: string) => `${CDN}/cdn/img/champion/tiles/${artKey(championKey)}_0.jpg`;
 /** Wide (16:9) crop of the champion's default splash art. */
 export const championSplashUrl = (championKey: string) => `${CDN}/cdn/img/champion/centered/${artKey(championKey)}_0.jpg`;
+/** Tall (308×560) loading screen art, the champion's portrait on build cards. */
+export const championLoadingUrl = (championKey: string) => `${CDN}/cdn/img/champion/loading/${artKey(championKey)}_0.jpg`;
 export const championIconUrl = (version: string, championKey: string) => `${CDN}/cdn/${version}/img/champion/${championKey}.png`;

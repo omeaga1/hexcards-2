@@ -11,7 +11,7 @@ League of Legends companion desktop app (Tauri 2 + React + TypeScript). Summoner
 
 ## UI
 
-- Components come from Arc UI (https://uiarc.dev, MIT), copied in as source. Build lanes and item forks are our own components on Arc tokens.
+- Components come from Arc UI (https://uiarc.dev, MIT), copied in as source. Interaction pieces may be adapted from useLayouts (https://uselayouts.com, MIT), rewritten onto Arc tokens with a credit comment. Build lanes, item forks and Hex Cards are our own components on Arc tokens.
 - Never hard-code a color, font or spacing value; use the CSS variables.
 - Dark theme is the default.
 

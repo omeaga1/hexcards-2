@@ -1,0 +1,56 @@
+/* The recessed well the key sits in. */
+.socket {
+  display: inline-flex;
+  padding: var(--space-1);
+  border-radius: calc(var(--radius-control) + var(--space-1));
+  background: var(--key-socket);
+  box-shadow: var(--key-socket-shadow);
+}
+
+.cap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--control-height-md);
+  padding: 0 var(--space-5) var(--space-1);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--key-cap);
+  box-shadow: var(--key-cap-edge);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: box-shadow var(--duration-fast) var(--ease-standard), padding var(--duration-fast) var(--ease-standard);
+}
+.cap[data-pressed] { box-shadow: var(--key-cap-edge-pressed); padding-bottom: 0; }
+.cap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.cap:disabled { cursor: not-allowed; color: var(--text-muted); }
+
+/* Status light set into the cap. It glows in the state's color; busy breathes until the import ends. */
+.led {
+  --glow: var(--key-led-off);
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--glow);
+  box-shadow: 0 0 0 1px var(--key-socket), 0 0 var(--space-2) var(--glow);
+  transition: background-color var(--duration-standard) var(--ease-standard), box-shadow var(--duration-standard) var(--ease-standard);
+}
+.led[data-light="off"] { box-shadow: 0 0 0 1px var(--key-socket); }
+.led[data-light="ready"] { --glow: var(--accent); }
+.led[data-light="busy"] { --glow: var(--warning); animation: breathe 1.1s var(--ease-in-out) infinite alternate; }
+.led[data-light="done"] { --glow: var(--success); }
+.led[data-light="error"] { --glow: var(--danger); }
+
+@keyframes breathe {
+  from { opacity: .35; }
+  to { opacity: 1; }
+}
+
+.label { white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cap, .led { transition: none; }
+  .led[data-light="busy"] { animation: none; }
+}

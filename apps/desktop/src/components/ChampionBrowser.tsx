@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
+import { motionTokens } from './arc/lib/motion-tokens';
 import { SearchField } from './arc/search-field/search-field';
 import SegmentedControl from './arc/segmented-control/segmented-control';
 import { Switch } from './arc/switch/switch';
 import {
-  BRACKET_RANKS, ROLES, ROLE_LABELS, championIconUrl, championSplashUrl, championTileUrl, roleIconUrl,
+  BRACKET_RANKS, ROLES, ROLE_LABELS, championIconUrl, championLoadingUrl, championTileUrl, roleIconUrl,
   type Bracket, type ChampionInfo, type Role, type RoleTable,
 } from '@hexcards/data';
 import { buildTierList } from '@hexcards/engine';
 import { settings } from '../lcu/settings';
+import { HexCard } from './HexCard';
 import { TierList } from './TierList';
 import styles from './ChampionBrowser.module.css';
 
@@ -44,6 +47,7 @@ export function ChampionBrowser({ version, champions, featured, recent, roles, b
   const [view, setView] = useState<'tiers' | 'grid'>('tiers');
   const [showRoleIcons, setShowRoleIcons] = useState(true);
   const searchRef = useRef<HTMLInputElement>(null);
+  const reduce = useReducedMotion();
 
   // Saved preferences are read after mount: storage isn't available during the first render everywhere.
   useEffect(() => {
@@ -204,16 +208,24 @@ export function ChampionBrowser({ version, champions, featured, recent, roles, b
           <section className={styles.featured} aria-labelledby="ready-heading">
             <h2 id="ready-heading" className={styles.sectionTitle}>Most played this patch</h2>
             <div className={styles.featuredRow}>
-              {featured.map((f) => (
-                <button key={f.champion.id} type="button" className={styles.feature} onClick={() => onSelect(f.champion.id)}>
-                  <img className={styles.splash} src={championSplashUrl(f.champion.key)} alt="" draggable={false} />
-                  <span className={styles.featureText}>
-                    <span className={styles.featureName}>{f.champion.name}</span>
-                    <span className={styles.featureMeta}>
-                      {f.role} · {f.variantLabels.length} {f.variantLabels.length === 1 ? 'build' : 'builds'}: {f.variantLabels.join(', ')}
-                    </span>
-                  </span>
-                </button>
+              {featured.map((f, i) => (
+                <motion.div
+                  key={f.champion.id}
+                  className={styles.featureSlot}
+                  // Dealt in from below, one after another: the one orchestrated entrance on this page.
+                  initial={reduce ? false : { opacity: 0, y: 48, rotate: (i - 1) * -6, scale: 0.92 }}
+                  animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+                  transition={reduce ? { duration: 0 } : { ...motionTokens.spring.morph, delay: 0.1 + i * 0.08 }}
+                >
+                  <HexCard
+                    art={championLoadingUrl(f.champion.key)}
+                    number={`#${i + 1}`}
+                    title={f.champion.name}
+                    subtitle={`${f.role} · ${f.variantLabels.join(', ')}`}
+                    stamps={[`${f.variantLabels.length} ${f.variantLabels.length === 1 ? 'build' : 'builds'}`]}
+                    onSelect={() => onSelect(f.champion.id)}
+                  />
+                </motion.div>
               ))}
             </div>
           </section>
