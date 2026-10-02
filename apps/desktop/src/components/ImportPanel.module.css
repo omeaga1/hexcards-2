@@ -17,12 +17,21 @@
 
 .title { font-size: var(--text-lg); }
 
+/* The text wraps inside its own column with two lines reserved, so switching builds (whose names
+   differ in length) never pushes the import key to a new row or changes the panel's height. */
+.row > div:first-child {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
 .note {
   margin: var(--space-1) 0 0;
+  min-height: calc(var(--leading-body) * 2em);
   color: var(--text-secondary);
 }
 
 .actions {
+  flex: none;
   display: flex;
   align-items: center;
   gap: var(--space-5);

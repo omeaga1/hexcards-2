@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sampleJaxTop, type BuildVariant, type Trait } from '@hexcards/data';
-import { MIN_EDGE, recommendBuild } from '../src';
+import { MIN_EDGE, buildChangingTraits, recommendBuild } from '../src';
 
 const [bruiser, onHit] = sampleJaxTop.variants as [BuildVariant, BuildVariant];
 // Bruiser: most played, 51% overall, does badly vs mostly AP. On-hit: 50.5% overall, great vs mostly AP.
@@ -56,5 +56,10 @@ describe('recommendBuild', () => {
     expect(recommendBuild([variants[0]!], traits('enemy-mostly-ap'))).toBeNull();
     expect(recommendBuild(variants, traits())).toBeNull();
     expect(recommendBuild([bruiser, onHit], traits('enemy-mostly-ap'))).toBeNull();
+  });
+
+  it('lists only the traits that change the recommended build on their own', () => {
+    expect(buildChangingTraits(variants)).toEqual(['enemy-mostly-ap']);
+    expect(recommendBuild(variants, traits('enemy-mostly-ap'))!.baselineId).toBe('bruiser');
   });
 });

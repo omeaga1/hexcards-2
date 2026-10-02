@@ -38,6 +38,8 @@ export interface BuildRecommendation {
   scores: BuildScore[];
   /** How far the recommended build's score is ahead of the next best. */
   edge: number;
+  /** The build it would pick from overall records alone, with no traits in play. */
+  baselineId: string;
 }
 
 /**
@@ -72,10 +74,25 @@ export function recommendBuild(variants: BuildVariant[], traits: Set<Trait>): Bu
     return { id: v.id, base, score: base + average, effects };
   });
 
-  const mostPlayed = variants.reduce((a, b) => (b.stats.games > a.stats.games ? b : a));
-  const fallback = scores.find((s) => s.id === mostPlayed.id)!;
-  const best = scores.reduce((a, b) => (b.score > a.score ? b : a));
-  const pick = best.score - fallback.score >= MIN_EDGE ? best : fallback;
+  const choose = (by: (s: BuildScore) => number) => {
+    const mostPlayed = variants.reduce((a, b) => (b.stats.games > a.stats.games ? b : a));
+    const fallback = scores.find((s) => s.id === mostPlayed.id)!;
+    const best = scores.reduce((a, b) => (by(b) > by(a) ? b : a));
+    return by(best) - by(fallback) >= MIN_EDGE ? best : fallback;
+  };
+  const pick = choose((s) => s.score);
   const runnerUp = scores.filter((s) => s !== pick).reduce((a, b) => (b.score > a.score ? b : a));
-  return { id: pick.id, scores, edge: pick.score - runnerUp.score };
+  return { id: pick.id, scores, edge: pick.score - runnerUp.score, baselineId: choose((s) => s.base).id };
+}
+
+/**
+ * The traits that, on their own, change which build is recommended. Only these (and traits with a
+ * swap) are worth a toggle: any other one would do nothing you can see.
+ */
+export function buildChangingTraits(variants: BuildVariant[]): Trait[] {
+  const traits = [...new Set(variants.flatMap((v) => Object.keys(v.traitStats ?? {}) as Trait[]))];
+  return traits.filter((trait) => {
+    const rec = recommendBuild(variants, new Set([trait]));
+    return !!rec && rec.id !== rec.baselineId;
+  });
 }

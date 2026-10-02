@@ -8,7 +8,7 @@ import {
   type AbilityInfo, type Bracket, type BuildVariant, type ChampionBuilds, type ChampionInfo, type ItemInfo, type PickTable, type Role, type RoleTable,
   type RuneData, type Trait,
 } from '@hexcards/data';
-import { MIN_EDGE, laneOpponent, matchupTraits, recommendBuild, type BuildRecommendation, type Tier, type TraitTable } from '@hexcards/engine';
+import { MIN_EDGE, buildChangingTraits, laneOpponent, matchupTraits, recommendBuild, type BuildRecommendation, type Tier, type TraitTable } from '@hexcards/engine';
 import { roleTierList } from '../tiers';
 import { BuildDeck } from './BuildDeck';
 import { BuildLane } from './BuildLane';
@@ -258,23 +258,26 @@ function Builds({ version, items, runes, abilities, builds, champion, matchup, c
   const variant = builds.variants.find((v) => v.id === variantId) ?? builds.variants[0]!;
   const activeSwaps = useMemo(() => variant.swaps.filter((s) => traits.has(s.trigger)), [variant, traits]);
 
-  // Which build fits these teams. In champ select it's picked for you until you pick a card yourself.
+  // Which build fits these teams. The card shown follows it until you pick one yourself: in champ
+  // select always, and otherwise when a toggle is what moves it (not just a better overall record).
   const recommendation = useMemo(() => recommendBuild(builds.variants, traits), [builds.variants, traits]);
+  const mostPlayedId = builds.variants.reduce((a, b) => (b.stats.games > a.stats.games ? b : a)).id;
+  const followed = !recommendation ? mostPlayedId
+    : matchup || recommendation.id !== recommendation.baselineId ? recommendation.id
+    : mostPlayedId;
   const [pickedByHand, setPickedByHand] = useState(false);
   useEffect(() => {
-    if (matchup && recommendation && !pickedByHand) setVariantId(recommendation.id);
-  }, [recommendation?.id, !!matchup]);
+    if (!pickedByHand) setVariantId(followed);
+  }, [followed]);
   const pickCard = (id: string) => {
     setPickedByHand(true);
     setVariantId(id);
   };
 
-  // Toggles for every trait with a swap, and, when there are builds to choose between, every trait
-  // the recommendation reads, so any champion can be planned against an AP team or a tank line.
-  const recommendable = builds.variants.length > 1 && builds.variants.every((v) => v.traitStats);
-  const triggers = TraitSchema.options.filter(
-    (t) => builds.variants.some((v) => v.swaps.some((s) => s.trigger === t)) || (recommendable && builds.variants.some((v) => v.traitStats?.[t])),
-  );
+  // A toggle for every trait that does something you can see: lights a swap, or on its own moves
+  // the recommended build. The rest would change nothing, so they're left out.
+  const changing = useMemo(() => new Set(buildChangingTraits(builds.variants)), [builds.variants]);
+  const triggers = TraitSchema.options.filter((t) => builds.variants.some((v) => v.swaps.some((s) => s.trigger === t)) || changing.has(t));
 
   const toggleTrait = (trait: Trait, on: boolean) =>
     setTraits((prev) => {
@@ -286,13 +289,14 @@ function Builds({ version, items, runes, abilities, builds, champion, matchup, c
 
   return (
     <>
-      <div className={styles.hand}>
-        <section className={styles.section} aria-labelledby="builds-heading">
-          <div className={styles.sectionHead}>
-            <h2 id="builds-heading" className={styles.sectionTitle}>Builds</h2>
-            {builds.variants.length > 1 && !recommendation && <p className={styles.note}>{builds.variants.length} ways to play {champion.name}. Pick a card.</p>}
-          </div>
-          {recommendation && <p className={styles.recommendation} aria-live="polite">{recommendationNote(recommendation, builds.variants, champion.name)}</p>}
+      <section className={styles.section} aria-labelledby="builds-heading">
+        <div className={styles.sectionHead}>
+          <h2 id="builds-heading" className={styles.sectionTitle}>Builds</h2>
+          {builds.variants.length > 1 && !recommendation && <p className={styles.note}>{builds.variants.length} ways to play {champion.name}. Pick a card.</p>}
+        </div>
+        {/* Above the hand, not beside the import panel, so the panel doesn't jump when this line changes. */}
+        {recommendation && <p className={styles.recommendation} aria-live="polite">{recommendationNote(recommendation, builds.variants, champion.name)}</p>}
+        <div className={styles.hand}>
           <BuildDeck
             version={version}
             champion={champion}
@@ -302,10 +306,9 @@ function Builds({ version, items, runes, abilities, builds, champion, matchup, c
             recommendedId={recommendation?.id}
             onValueChange={pickCard}
           />
-        </section>
-
-        <ImportPanel champion={builds} variant={variant} activeSwaps={activeSwaps} connected={connected} inChampSelect={inChampSelect} />
-      </div>
+          <ImportPanel champion={builds} variant={variant} activeSwaps={activeSwaps} connected={connected} inChampSelect={inChampSelect} />
+        </div>
+      </section>
 
       <div className={styles.runesAndSkills}>
         <section className={styles.panel} aria-labelledby="runes-heading">
