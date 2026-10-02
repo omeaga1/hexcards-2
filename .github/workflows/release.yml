@@ -64,3 +64,14 @@ jobs:
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
+
+      # The same installer under a name that never changes, so the landing page can link straight to
+      # .../releases/latest/download/Hex.Cards_x64-setup.exe and start the download in one click.
+      - name: Upload a fixed-name copy of the installer
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          installer=$(ls apps/desktop/src-tauri/target/release/bundle/nsis/*_x64-setup.exe | head -1)
+          cp "$installer" Hex.Cards_x64-setup.exe
+          gh release upload "${GITHUB_REF_NAME}" Hex.Cards_x64-setup.exe --clobber
