@@ -19,7 +19,7 @@ describe('buildTierList', () => {
   });
 
   it('does not let a small lucky sample outrank a large strong one', () => {
-    const lucky = stat(1, 12, 9); // 75% over 12 games
+    const lucky = stat(1, 100, 57); // 57% over just enough games to be ranked
     const solid = stat(2, 400, 220); // 55% over 400 games
     expect(adjustedWinRate(lucky.wins, lucky.games)).toBeLessThan(adjustedWinRate(solid.wins, solid.games));
     const { tiers } = buildTierList([lucky, solid, stat(3, 300, 150), stat(4, 300, 140)]);
@@ -28,7 +28,7 @@ describe('buildTierList', () => {
   });
 
   it(`leaves champions under ${MIN_TIER_GAMES} games unranked`, () => {
-    const { tiers, lowSample } = buildTierList([stat(1, 9, 9), stat(2, 100, 50)]);
+    const { tiers, lowSample } = buildTierList([stat(1, 99, 70), stat(2, 100, 50)]);
     expect(lowSample.map((e) => e.championId)).toEqual([1]);
     expect(tiers.flatMap((t) => t.entries).map((e) => e.championId)).toEqual([2]);
   });

@@ -11,7 +11,7 @@ const LANE_PRIOR = 100;
 /** Imaginary games of "no difference" each team trait is weighed against. */
 const TRAIT_PRIOR = 300;
 /** A champion needs this many games in the role to be suggested. */
-export const MIN_PICK_GAMES = 50;
+export const MIN_PICK_GAMES = 100;
 /** An enemy is only taken as your lane opponent if it plays that role in this share of its games. */
 const MIN_LANE_SHARE = 0.2;
 /** A reason is only given when it moves the score this much, with this many games behind it. */

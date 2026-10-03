@@ -9,8 +9,8 @@ export type Tier = (typeof TIERS)[number];
  */
 const TIER_SHARES: Record<Tier, number> = { S: 0.1, A: 0.2, B: 0.35, C: 0.25, D: 0.1 };
 
-/** Champions need this many games in the role to be ranked at all. */
-export const MIN_TIER_GAMES = 10;
+/** Champions need this many games in the role to be ranked at all; fewer, and a hot streak looks like a top pick. */
+export const MIN_TIER_GAMES = 100;
 
 /**
  * Win rates are pulled toward 50% by this many imaginary games, so a hot streak over a dozen games
