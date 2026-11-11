@@ -14,7 +14,7 @@ import { PickSuggestions } from './components/PickSuggestions';
 import { settings } from './lcu/settings';
 import { ChampionView } from './components/ChampionView';
 import { UpdateBanner } from './components/UpdateBanner';
-import { useLeagueClient, type ChampSelectSession } from './lcu/useLeagueClient';
+import { lockedChampion, useLeagueClient, type ChampSelectSession } from './lcu/useLeagueClient';
 import styles from './App.module.css';
 
 const ROLE_NAMES: Record<string, string> = { top: 'Top', jungle: 'Jungle', middle: 'Mid', bottom: 'Bot', utility: 'Support' };
@@ -163,6 +163,7 @@ export function App() {
   const hasBuild = (id: number) => !!index?.champions[id];
   const pickRole = ROLES.find((r) => r === pick?.role);
   const session = client.session;
+  const locked = lockedChampion(session);
   const matchup = session && traitTable
     ? {
         allies: session.myTeam.filter((p) => p.cellId !== session.localPlayerCellId).map((p) => p.championId || p.championPickIntent).filter((id) => id > 0),
@@ -183,21 +184,23 @@ export function App() {
         })
     : [];
 
-  // Pick suggestions: the bracket's pick table is only loaded in champ select (about 60 KB).
+  // The bracket's pick table (lane matchups and team traits per champion, about 80 KB over the wire)
+  // feeds champ select suggestions and every champion page's matchups, so it loads once either is on screen.
   const [pickTable, setPickTable] = useState<{ bracket: Bracket; table: PickTable } | null>(null);
   const shownBracket = bracketData?.bracket;
+  const needPicks = !!session || selectedId !== null;
   useEffect(() => {
-    if (!session || !latest || !shownBracket || pickTable?.bracket === shownBracket) return;
+    if (!needPicks || !latest || !shownBracket || pickTable?.bracket === shownBracket) return;
     let cancelled = false;
     loadPickTable(BUILDS_BASE, latest.patch, shownBracket)
       .then((table) => !cancelled && setPickTable({ bracket: shownBracket, table }))
       .catch(() => {
-        // Builds published before pick tables existed: no suggestions, everything else works.
+        // Builds published before pick tables existed: no suggestions or matchups, everything else works.
       });
     return () => {
       cancelled = true;
     };
-  }, [!!session, latest, shownBracket]);
+  }, [needPicks, latest, shownBracket]);
   const picks = pickTable && pickTable.bracket === shownBracket ? pickTable.table : undefined;
 
   const suggestions = useMemo(() => {
@@ -310,7 +313,10 @@ export function App() {
               champions={game.champions}
               connected={client.connected}
               inChampSelect={!!client.session}
+              // Names this lock, so auto-import runs once per champ select even if you browse away and back.
+              lockKey={session && locked === selected.id ? `${session.gameId ?? 0}:${locked}` : null}
               onBack={() => setSelectedId(null)}
+              onOpenChampion={setSelectedId}
             />
           ) : (
             <ChampionBrowser

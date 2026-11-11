@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RoleTable, type GameRecord, type PickTable, type RoleData } from '@hexcards/data';
-import { countPicks, guessRoles, laneOpponent, suggestPicks } from '../src';
+import { countPicks, guessRoles, laneMatchups, laneOpponent, suggestPicks } from '../src';
 
 const POSITIONS = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'] as const;
 const game = (blue: number[], red: number[], blueWins: boolean): GameRecord => ({
@@ -78,5 +78,40 @@ describe('suggestPicks', () => {
     const { opponent, suggestions } = suggestPicks({ ...input, enemies: [] });
     expect(opponent).toBeUndefined();
     expect(suggestions[0]).toMatchObject({ championId: 1, reason: { kind: 'strong' } });
+  });
+});
+
+describe('laneMatchups', () => {
+  const vs = {
+    20: [200, 80] as [number, number], // 40% over many games: a real counter
+    21: [4, 0] as [number, number], // 0% over 4 games: too few to list
+    22: [16, 5] as [number, number], // 31% over 16 games: listed, but pulled well toward 50%
+    23: [300, 180] as [number, number], // 60%: easy
+    24: [100, 50] as [number, number], // 50%: no different from usual
+  };
+  const picks: PickTable = { 1: { top: { games: 1000, wins: 500, traits: {}, vs } } };
+
+  it('ranks matchups after pulling small samples toward the usual win rate', () => {
+    const m = laneMatchups(picks, 1, 'top')!;
+    expect(m.usual).toBe(0.5);
+    expect(m.all.map((x) => x.opponent)).not.toContain(21);
+    // 16 games at 31% sits above 200 games at 40% once weighed: 20 is the harder lane.
+    expect(m.hardest.map((x) => x.opponent)).toEqual([20, 22]);
+    expect(m.easiest.map((x) => x.opponent)).toEqual([23]);
+    expect(m.hardest[1]).toMatchObject({ games: 16, wins: 5, winRate: 0.3125 });
+  });
+
+  it('keeps an even matchup out of both lists and returns null without games in the role', () => {
+    const m = laneMatchups(picks, 1, 'top')!;
+    expect([...m.hardest, ...m.easiest].map((x) => x.opponent)).not.toContain(24);
+    expect(laneMatchups(picks, 1, 'jungle')).toBeNull();
+    expect(laneMatchups(picks, 2, 'top')).toBeNull();
+  });
+
+  it('limits each list', () => {
+    const many = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [100 + i, [100, 20 + i] as [number, number]]));
+    const m = laneMatchups({ 1: { top: { games: 1000, wins: 500, traits: {}, vs: many } } }, 1, 'top', 3)!;
+    expect(m.hardest).toHaveLength(3);
+    expect(m.hardest[0]!.opponent).toBe(100);
   });
 });

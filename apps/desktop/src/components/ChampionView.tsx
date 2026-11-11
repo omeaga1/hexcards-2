@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from './arc/button/button';
 import { Skeleton } from './arc/skeleton/skeleton';
@@ -8,11 +8,12 @@ import {
   type AbilityInfo, type Bracket, type BuildVariant, type ChampionBuilds, type ChampionInfo, type ItemInfo, type PickTable, type Role, type RoleTable,
   type RuneData, type Trait,
 } from '@hexcards/data';
-import { MIN_EDGE, buildChangingTraits, laneOpponent, matchupTraits, recommendBuild, type BuildRecommendation, type Tier, type TraitTable } from '@hexcards/engine';
+import { MIN_EDGE, buildChangingTraits, laneMatchups, laneOpponent, matchupTraits, recommendBuild, type BuildRecommendation, type Tier, type TraitTable } from '@hexcards/engine';
 import { roleTierList } from '../tiers';
 import { BuildDeck } from './BuildDeck';
 import { BuildLane } from './BuildLane';
 import { ImportPanel } from './ImportPanel';
+import { Matchups } from './Matchups';
 import { RolePills } from './RolePills';
 import { RunePage } from './RunePage';
 import { SkillOrder } from './SkillOrder';
@@ -90,18 +91,22 @@ interface ChampionViewProps {
   preferredRole?: Role;
   /** In champ select: the champions on each team, to light up matching swaps and pick a build. */
   matchup?: { allies: number[]; enemies: number[]; traits: TraitTable };
-  /** In champ select: the bracket's lane matchups, for this champion's record against your likely lane opponent. */
+  /** The bracket's lane matchups: this champion's hardest and best lanes, and in champ select its record against your likely lane opponent. */
   picks?: PickTable;
   champions: Map<number, ChampionInfo>;
   connected: boolean;
   inChampSelect: boolean;
+  /** Set when this champion is the one you've locked in, for import on lock-in. */
+  lockKey: string | null;
   onBack: () => void;
+  /** Opens another champion's page, e.g. a lane opponent from the matchups. */
+  onOpenChampion: (championId: number) => void;
 }
 
 type BuildState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; roles: ChampionBuilds[] };
 
 export function ChampionView({
-  version, items, runes, champion, source, roles: roleTable, bracket, rolesByBracket, preferredRole, matchup, picks, champions, connected, inChampSelect, onBack,
+  version, items, runes, champion, source, roles: roleTable, bracket, rolesByBracket, preferredRole, matchup, picks, champions, connected, inChampSelect, lockKey, onBack, onOpenChampion,
 }: ChampionViewProps) {
   const [abilities, setAbilities] = useState<AbilityInfo[] | null>(null);
   const [builds, setBuilds] = useState<BuildState>({ status: 'loading' });
@@ -157,8 +162,11 @@ export function ChampionView({
     if (!current || !matchup || !picks) return null;
     const opponent = laneOpponent(current.role, matchup.enemies, roleTable);
     const record = opponent === undefined ? undefined : picks[champion.id]?.[current.role]?.vs[opponent];
-    return opponent === undefined ? null : { opponent: champions.get(opponent)?.name ?? 'Lane opponent', record };
+    return opponent === undefined ? null : { id: opponent, opponent: champions.get(opponent)?.name ?? 'Lane opponent', record };
   }, [current?.role, matchup?.enemies.join(','), picks, roleTable, champion.id]);
+
+  // Every lane opponent with enough games, hardest and best first.
+  const matchups = useMemo(() => (current && picks ? laneMatchups(picks, champion.id, current.role) : null), [current?.role, picks, champion.id]);
   useEffect(() => {
     let cancelled = false;
     loadAbilities(version, champion.key)
@@ -238,15 +246,37 @@ export function ChampionView({
       ) : builds.status === 'error' ? (
         <p className={styles.note}>Couldn't load {champion.name}'s builds. ({builds.message})</p>
       ) : current ? (
-        <Builds key={current.role} version={version} items={items} runes={runes} abilities={abilities} builds={current} champion={champion} matchup={matchup} connected={connected} inChampSelect={inChampSelect} />
+        <Builds
+          key={current.role}
+          version={version} items={items} runes={runes} abilities={abilities} builds={current} champion={champion} matchup={matchup} connected={connected} inChampSelect={inChampSelect}
+          // Auto-import the role you're playing; any role will do if the champion has no build for it.
+          lockKey={!preferredRole || current.role === preferredRole || !roles.some((r) => r.role === preferredRole) ? lockKey : null}
+          matchups={matchups && matchups.all.length > 0 ? (
+            <Matchups
+              version={version}
+              champion={champion}
+              role={current.role}
+              bracket={bracket}
+              matchups={matchups}
+              champions={champions}
+              laneOpponent={lane?.id}
+              onOpen={onOpenChampion}
+            />
+          ) : null}
+        />
       ) : null}
     </div>
   );
 }
 
-type BuildsProps = Omit<ChampionViewProps, 'onBack' | 'source' | 'preferredRole' | 'roles' | 'bracket' | 'rolesByBracket' | 'picks' | 'champions'> & { builds: ChampionBuilds; abilities: AbilityInfo[] | null };
+type BuildsProps = Omit<ChampionViewProps, 'onBack' | 'onOpenChampion' | 'source' | 'preferredRole' | 'roles' | 'bracket' | 'rolesByBracket' | 'picks' | 'champions'> & {
+  builds: ChampionBuilds;
+  abilities: AbilityInfo[] | null;
+  /** The matchups section, placed between the build cards and the runes. */
+  matchups: ReactNode;
+};
 
-function Builds({ version, items, runes, abilities, builds, champion, matchup, connected, inChampSelect }: BuildsProps) {
+function Builds({ version, items, runes, abilities, builds, champion, matchup, connected, inChampSelect, lockKey, matchups }: BuildsProps) {
   const [variantId, setVariantId] = useState(builds.variants[0]!.id);
   const [traits, setTraits] = useState<Set<Trait>>(new Set());
   // In champ select, the teams decide which swaps light up, and update as picks lock in.
@@ -306,9 +336,11 @@ function Builds({ version, items, runes, abilities, builds, champion, matchup, c
             recommendedId={recommendation?.id}
             onValueChange={pickCard}
           />
-          <ImportPanel champion={builds} variant={variant} activeSwaps={activeSwaps} connected={connected} inChampSelect={inChampSelect} />
+          <ImportPanel champion={builds} variant={variant} activeSwaps={activeSwaps} connected={connected} inChampSelect={inChampSelect} lockKey={lockKey} />
         </div>
       </section>
+
+      {matchups}
 
       <div className={styles.runesAndSkills}>
         <section className={styles.panel} aria-labelledby="runes-heading">

@@ -24,6 +24,9 @@ export const settings = {
     return Number.isFinite(id) && id > 0 ? id : undefined;
   },
   setRunePageId: (id: number) => write('hexcards.runePageId', String(id)),
+  /** Import runes, item sets and spells by itself when you lock in. Off until you turn it on. */
+  autoImport: (): boolean => read('hexcards.autoImport') === 'true',
+  setAutoImport: (on: boolean) => write('hexcards.autoImport', String(on)),
   recentChampions: (): number[] => {
     try {
       const ids = JSON.parse(read('hexcards.recent') ?? '[]');
