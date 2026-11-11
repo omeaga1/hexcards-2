@@ -5,11 +5,21 @@ import type { LcuClient } from '@hexcards/engine';
 
 /** The parts of `/lol-champ-select/v1/session` Hex Cards reads. */
 export interface ChampSelectSession {
+  /** Identifies this champ select; the same through the whole lobby. */
+  gameId?: number;
   localPlayerCellId: number;
   myTeam: { cellId: number; championId: number; championPickIntent: number; assignedPosition: string }[];
   theirTeam: { cellId: number; championId: number }[];
   /** Champions banned so far, as the client shows them. */
   bans?: { myTeamBans: number[]; theirTeamBans: number[] };
+  /** Pick and ban turns, in order. A completed pick by your cell means you've locked in. */
+  actions?: { actorCellId: number; championId: number; completed: boolean; type: string }[][];
+}
+
+/** The champion you've locked in, or null while you're still choosing. */
+export function lockedChampion(session: ChampSelectSession | null): number | null {
+  const lock = session?.actions?.flat().find((a) => a.actorCellId === session.localPlayerCellId && a.type === 'pick' && a.completed && a.championId > 0);
+  return lock?.championId ?? null;
 }
 
 export interface LeagueClientState {
@@ -76,9 +86,11 @@ export function useLeagueClient(): LeagueClientState {
   useEffect(() => {
     if (!import.meta.env.DEV || available) return;
     let cancelled = false;
-    void import('./demo').then(({ demoSession }) => {
+    void import('./demo').then(async ({ demoSession, demoClient }) => {
       const demo = demoSession();
-      if (demo && !cancelled) setState((s) => ({ ...s, message: 'Demo champ select', phase: 'ChampSelect', session: demo }));
+      const client = await demoClient();
+      if (client) lcuClient.request = client.request;
+      if (demo && !cancelled) setState((s) => ({ ...s, message: 'Demo champ select', phase: 'ChampSelect', session: demo, connected: !!client }));
     });
     return () => {
       cancelled = true;

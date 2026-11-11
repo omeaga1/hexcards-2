@@ -143,3 +143,57 @@ export function suggestPicks(input: PickInput): { opponent?: number; suggestions
   });
   return { opponent, suggestions };
 }
+
+/** Imaginary games at the champion's usual win rate that every lane matchup is weighed against. */
+const MATCHUP_PRIOR = 50;
+/** A lane matchup needs this many games to be listed at all. */
+export const MIN_MATCHUP_GAMES = 15;
+
+export interface LaneMatchup {
+  /** The enemy laner's champion ID. */
+  opponent: number;
+  games: number;
+  wins: number;
+  /** Wins in these games, as played. */
+  winRate: number;
+  /** Win rate pulled toward the champion's usual rate by how few games there are. Ranks the lists. */
+  score: number;
+}
+
+export interface LaneMatchups {
+  /** The champion's win rate in the role across all its games. */
+  usual: number;
+  /** Every listed matchup, easiest first. */
+  all: LaneMatchup[];
+  /** Matchups that go worse than usual, hardest first. */
+  hardest: LaneMatchup[];
+  /** Matchups that go better than usual, easiest first. */
+  easiest: LaneMatchup[];
+}
+
+/**
+ * How one champion does against each lane opponent in a role, from the published pick table. A
+ * matchup with few games is pulled toward the champion's usual win rate before it's ranked, so two
+ * lucky games can't make a champion look like a hard counter. Null when the champion has no games in the role.
+ */
+export function laneMatchups(picks: PickTable, championId: number, role: Role, limit = 5): LaneMatchups | null {
+  const row = picks[championId]?.[role];
+  if (!row || row.games === 0) return null;
+  const usual = row.wins / row.games;
+  const all = Object.entries(row.vs)
+    .filter(([, [games]]) => games >= MIN_MATCHUP_GAMES)
+    .map(([id, [games, wins]]): LaneMatchup => ({
+      opponent: Number(id),
+      games,
+      wins,
+      winRate: wins / games,
+      score: (wins + MATCHUP_PRIOR * usual) / (games + MATCHUP_PRIOR),
+    }))
+    .sort((a, b) => b.score - a.score || b.games - a.games);
+  return {
+    usual,
+    all,
+    hardest: all.filter((m) => m.score < usual).reverse().slice(0, limit),
+    easiest: all.filter((m) => m.score > usual).slice(0, limit),
+  };
+}

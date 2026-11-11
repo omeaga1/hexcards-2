@@ -1,0 +1,189 @@
+.section {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.head {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.title { font-size: var(--text-lg); }
+
+.note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hardest and best lanes side by side; they stack when the window is narrow. */
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-4);
+}
+
+.column {
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.column[data-pinned] { max-width: calc(50% - var(--space-2)); }
+@media (max-width: 760px) { .column[data-pinned] { max-width: none; } }
+
+.columnTitle {
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.list, .grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  column-gap: var(--space-4);
+}
+
+/* One opponent: icon, name, a bar leaning from the usual win rate, and the win rate itself. */
+.row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(var(--space-16), 7rem) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+}
+.row:hover { background: var(--surface-muted); }
+.row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.row[data-lane] { border-color: var(--accent); background: var(--accent-subtle); }
+
+.row img {
+  width: var(--space-10);
+  height: var(--space-10);
+  border-radius: var(--space-3);
+  border: 1px solid var(--border);
+}
+
+.who {
+  display: grid;
+  min-width: 0;
+}
+
+.name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.games {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.laneTag {
+  font-size: var(--text-xs);
+  color: var(--accent-strong);
+}
+
+/* A track with a tick at the middle; the fill runs from the middle toward the matchup's lean. */
+.bar {
+  position: relative;
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+}
+.bar::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(-1 * var(--space-1));
+  bottom: calc(-1 * var(--space-1));
+  width: 1px;
+  background: var(--border-strong);
+}
+.bar > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--radius-pill);
+  transform-origin: left;
+  animation: grow var(--duration-considered) var(--ease-enter) both;
+}
+/* Each tone only ever leans one way, so each side has its own rule. */
+.bar[data-tone="hard"] > span {
+  right: 50%;
+  width: calc(var(--lean) * -50%);
+  transform-origin: right;
+  background: var(--danger);
+}
+.bar[data-tone="easy"] > span {
+  left: 50%;
+  width: calc(var(--lean) * 50%);
+  background: var(--success);
+}
+
+@keyframes grow {
+  from { transform: scaleX(0); }
+}
+
+.rate {
+  min-width: 3.5em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.rate[data-tone="hard"] { color: var(--danger); }
+.rate[data-tone="easy"] { color: var(--success); }
+
+.more { display: flex; }
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.toggle:hover { background: var(--surface-muted); }
+.toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toggle svg { transition: transform var(--duration-standard) var(--ease-standard); }
+.toggle svg[data-open] { transform: rotate(180deg); }
+
+.all {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.search { max-width: 22rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .row, .toggle, .toggle svg { transition: none; }
+  .bar > span { animation: none; }
+}
