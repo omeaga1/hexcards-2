@@ -1,0 +1,403 @@
+.profile {
+  display: grid;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.iconWrap {
+  position: relative;
+  flex: none;
+}
+.icon {
+  width: var(--space-20);
+  height: var(--space-20);
+  display: block;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+/* Level under the icon, like the client's profile. */
+.levelChip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(-1 * var(--space-2));
+  transform: translateX(-50%);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: var(--space-5);
+  font-variant-numeric: tabular-nums;
+}
+
+.nameBlock {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.name {
+  font-size: var(--text-3xl);
+  overflow-wrap: anywhere;
+}
+.tag {
+  margin-left: var(--space-1);
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.meta {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.actions svg { flex: none; }
+
+/* Ranked: one card per queue, side by side. */
+.ranks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.rank {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+.rank > * { min-width: 0; }
+
+.emblemSlot {
+  flex: none;
+  width: var(--space-16);
+  height: var(--space-16);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+}
+/*
+ * The crest art is a 1280x720 canvas with the crest in the middle fifth (for Iron to Diamond).
+ * Scale the canvas so the crest itself fills the slot; wider Master+ wings spill over a little.
+ */
+.emblemSlot:has(.emblem) { position: relative; background: none; }
+.emblem {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 480%;
+  height: auto;
+  max-width: none;
+  transform: translate(-50%, -47.5%);
+  pointer-events: none;
+}
+
+.rankText {
+  display: grid;
+  gap: var(--space-1);
+}
+.rankLabel {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.rankName {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 500;
+  line-height: var(--leading-display);
+}
+.rank[data-unranked] .rankName { color: var(--text-secondary); }
+.lp {
+  margin-left: var(--space-1);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.rankMeta {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.section {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  align-content: start;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+.sectionHead > div { display: grid; gap: var(--space-1); }
+
+.sectionTitle { font-size: var(--text-lg); }
+
+.note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* Four headline numbers, sharing one bordered strip. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.stat {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5);
+  min-width: 0;
+}
+.stat + .stat { border-left: 1px solid var(--border-subtle); }
+
+.statLabel {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.statValue {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 500;
+  line-height: var(--leading-display);
+  font-variant-numeric: tabular-nums;
+}
+.statContext {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.formStrip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.formStrip li {
+  width: var(--space-6);
+  height: var(--space-6);
+  display: grid;
+  place-items: center;
+  border-radius: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+}
+.formStrip li[data-win] {
+  color: var(--success);
+  background: color-mix(in oklab, var(--success) 14%, transparent);
+}
+
+.streak {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* Champions beside roles; stacks on narrow windows. */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(16rem, 1fr);
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.tableWrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th {
+  padding: var(--space-3) var(--space-4) var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--text-muted);
+  text-align: left;
+  white-space: nowrap;
+}
+.table td {
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.championButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.championButton img {
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border);
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+.championButton span {
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: calc(var(--space-1) * .75);
+  transition: text-decoration-color var(--duration-fast) var(--ease-standard);
+}
+.championButton:hover img { border-color: var(--border-strong); }
+.championButton:hover span { text-decoration-color: var(--border-strong); }
+
+.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.num > span { display: block; }
+
+.sub {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.rate {
+  display: flex !important;
+  align-items: center;
+  gap: var(--space-2);
+}
+.rateBar, .roleBar {
+  display: block;
+  height: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+.rateBar { width: var(--space-12); }
+.rateBar > span, .roleBar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.roles {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+
+.role {
+  display: grid;
+  grid-template-columns: var(--space-6) 4.5rem minmax(0, 1fr) var(--space-10) 4.5rem;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+.role + .role { border-top: 1px solid var(--border-subtle); }
+.role img { width: var(--space-6); height: var(--space-6); }
+.roleShare { font-variant-numeric: tabular-nums; text-align: right; }
+.role .sub { text-align: right; }
+
+.more {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .championButton img, .championButton span { transition: none; }
+}
+
+@media (max-width: 1100px) {
+  .split { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat:nth-child(3) { border-left: 0; }
+  .stat:nth-child(n + 3) { border-top: 1px solid var(--border-subtle); }
+  .ranks { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .profile { gap: var(--space-6); }
+  .icon { width: var(--space-16); height: var(--space-16); }
+  .name { font-size: var(--text-2xl); }
+  .statValue { font-size: var(--text-2xl); }
+  .role { grid-template-columns: var(--space-6) 4rem minmax(0, 1fr) var(--space-10); }
+  .role .sub { display: none; }
+  .hideNarrow { display: none; }
+  .table th, .table td { padding-left: var(--space-3); padding-right: var(--space-3); }
+}

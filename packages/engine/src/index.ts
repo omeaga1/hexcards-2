@@ -6,3 +6,4 @@ export * from './importer';
 export * from './aggregate';
 export * from './recommend';
 export * from './picks';
+export * from './playerStats';

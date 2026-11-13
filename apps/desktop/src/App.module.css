@@ -146,3 +146,37 @@
   .page { padding: var(--space-4) var(--space-4) var(--space-8); }
   .header { flex-wrap: wrap; }
 }
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+/* The app's two sections. Selected reads as a filled pill, the way the champion rail marks its role. */
+.nav {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.navButton {
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.navButton:hover { background: var(--surface-muted); color: var(--foreground); }
+.navButton[aria-current="page"] { background: var(--accent-subtle); color: var(--foreground); }
+
+@media (prefers-reduced-motion: reduce) {
+  .navButton { transition: none; }
+}
+
+@media (max-width: 640px) {
+  .brand { width: 100%; justify-content: space-between; gap: var(--space-4); }
+}

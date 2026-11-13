@@ -1,0 +1,112 @@
+/* Same frame as the champions page: a rail on the left (search, you, pinned, recent), the profile on the right. */
+.layout {
+  display: grid;
+  grid-template-columns: 16rem minmax(0, 1fr);
+  gap: var(--space-10);
+  align-items: start;
+}
+
+.rail {
+  position: sticky;
+  top: var(--space-6);
+  display: grid;
+  gap: var(--space-6);
+}
+
+.search {
+  display: grid;
+  gap: var(--space-2);
+}
+.search > button { justify-self: start; }
+
+.hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.hint[data-error] { color: var(--danger); }
+
+.group {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.railTitle {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.playerRow {
+  display: grid;
+  grid-template-columns: var(--space-8) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  margin: 0 calc(-1 * var(--space-3));
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.playerRow:hover { background: var(--surface-muted); color: var(--foreground); }
+.playerRow[aria-current] { background: var(--accent-subtle); color: var(--foreground); }
+.playerRow img {
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.playerText {
+  display: grid;
+  min-width: 0;
+}
+.playerName, .playerTag {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.playerName { color: inherit; }
+.playerTag {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.caption {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.content {
+  min-width: 0;
+  scroll-margin-top: var(--space-6);
+}
+
+.waiting {
+  max-width: 32rem;
+  margin: var(--space-12) auto 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playerRow { transition: none; }
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); }
+  .rail { position: static; }
+  /* Saved players become a row of chips so the profile stays close to the top. */
+  .group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  .railTitle { width: 100%; margin: 0; }
+  .playerRow { margin: 0; padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-pill); }
+  .playerRow img { width: var(--space-6); height: var(--space-6); }
+  .playerRow { grid-template-columns: var(--space-6) auto; }
+  .playerTag { display: none; }
+}
