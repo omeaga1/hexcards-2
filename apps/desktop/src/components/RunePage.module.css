@@ -99,6 +99,32 @@
 .cardTitle { font-weight: 500; color: var(--foreground); }
 .cardText { margin: 0; font-size: var(--text-xs); color: var(--text-secondary); }
 
+/* Loading: the page's own shape in Arc's skeleton colour and pulse. */
+.ghost,
+.ghostLabel {
+  display: block;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklch, var(--border-strong) 38%, var(--surface));
+  animation: rune-ghost-pulse 1.8s var(--ease-in-out) calc(var(--index, 0) * 90ms) 11 both;
+}
+.ghostLabel { width: 30%; height: var(--space-4); border-radius: var(--radius-control); }
+.ghost[data-size="keystone"] { width: var(--space-10); height: var(--space-10); }
+.ghost[data-size="minor"] { width: var(--space-8); height: var(--space-8); }
+.ghost[data-size="shard"] { width: var(--space-5); height: var(--space-5); }
+@keyframes rune-ghost-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .52; } }
+
+.unavailable {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-control);
+}
+.unavailableTitle { margin: 0; font-weight: 500; color: var(--foreground); }
+.unavailableText { margin: 0 0 var(--space-1); font-size: var(--text-sm); color: var(--text-secondary); max-width: 40ch; }
+
 @media (prefers-reduced-motion: reduce) {
   .rune img { transition: none; }
+  .ghost, .ghostLabel { animation: none; }
 }

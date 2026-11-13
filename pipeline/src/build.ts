@@ -5,13 +5,14 @@
 //
 // Reads pipeline/data/<patch>/<bracket>.ndjson and writes, for each bracket with games:
 //   <out>/<patch>/<bracket>/<ChampionKey>.json, index.json and roles.json
-// plus <out>/<patch>/traits.json (champion traits for tagging teams in champ select)
+// plus <out>/<patch>/traits.json (champion traits for tagging teams in champ select),
+// <out>/<patch>/runes.json (rune names, icons and tree layouts for the rune page)
 // and <out>/latest.json listing the patch and each bracket's game count. Each bracket also gets
 // picks.json: per champion and role, wins with each team trait and against each lane opponent.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { BRACKETS, ChampionBuilds, countRoles, type Bracket, type GameRecord, type PerkStyle, type Position } from '@hexcards/data';
+import { BRACKETS, ChampionBuilds, countRoles, publishedRunes, type Bracket, type ClientPerk, type GameRecord, type PerkStyle, type Position } from '@hexcards/data';
 import {
   ItemCatalog, buildTraitTable, buildVariants, countPicks, matchupTraits, swapCandidates, toBuildGame,
   type BuildGame, type DDragonItem, type SwapCandidate, type TraitTable,
@@ -33,10 +34,12 @@ const getJson = async <T>(url: string): Promise<T> => {
 const version = (await getJson<string[]>('https://ddragon.leagueoflegends.com/api/versions.json'))[0]!;
 // The workflow passes the patch it collected, so Data Dragon moving on mid-run can't publish an empty patch.
 const patch: string = args.patch ?? version.split('.').slice(0, 2).join('.');
-const [itemJson, championJson, perkStyles] = await Promise.all([
+const CDRAGON = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default';
+const [itemJson, championJson, perkStyles, perks] = await Promise.all([
   getJson<{ data: Record<string, DDragonItem> }>(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/item.json`),
   getJson<{ data: Record<string, { key: string; id: string; name: string }> }>(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`),
-  getJson<{ styles: PerkStyle[] }>('https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perkstyles.json'),
+  getJson<{ styles: (PerkStyle & { iconPath: string; tooltip: string })[] }>(`${CDRAGON}/v1/perkstyles.json`),
+  getJson<ClientPerk[]>(`${CDRAGON}/v1/perks.json`),
 ]);
 const items = new ItemCatalog(itemJson.data);
 const champions = new Map(Object.values(championJson.data).map((c) => [Number(c.key), { key: c.id, name: c.name }]));
@@ -109,6 +112,8 @@ for (const bracket of BRACKETS) {
 const traits = buildTraitTable([...byBracket.values()].flat());
 mkdirSync(join(OUT, patch), { recursive: true });
 writeFileSync(join(OUT, patch, 'traits.json'), JSON.stringify(traits));
+// The app reads rune details from here: CommunityDragon is often too slow to load them from directly.
+writeFileSync(join(OUT, patch, 'runes.json'), JSON.stringify(publishedRunes(perks, perkStyles)));
 const traitCounts: Record<string, number> = {};
 for (const list of Object.values(traits)) for (const t of list) traitCounts[t] = (traitCounts[t] ?? 0) + 1;
 console.log(`traits: ${Object.keys(traits).length} champions`, traitCounts);
