@@ -8,17 +8,6 @@ export const RIFT_MAP_ID = 11;
 /** Games this short were remakes; nobody's record counts them. */
 const REMAKE_SECONDS = 300;
 
-export type QueueFilter = 'all' | 'solo' | 'flex' | 'normal';
-
-export const QUEUE_FILTER_LABELS: Record<QueueFilter, string> = { all: 'All queues', solo: 'Ranked Solo/Duo', flex: 'Ranked Flex', normal: 'Normal' };
-
-const QUEUE_IDS: Record<Exclude<QueueFilter, 'all'>, number[]> = {
-  solo: [420],
-  flex: [440],
-  // Draft, blind, Quickplay and Swiftplay.
-  normal: [400, 430, 480, 490],
-};
-
 const QUEUE_NAMES: Record<number, string> = {
   420: 'Ranked Solo/Duo', 440: 'Ranked Flex', 400: 'Normal Draft', 430: 'Normal Blind', 480: 'Swiftplay', 490: 'Quickplay', 700: 'Clash',
   0: 'Custom', 830: 'Co-op vs. AI', 840: 'Co-op vs. AI', 850: 'Co-op vs. AI', 870: 'Co-op vs. AI', 880: 'Co-op vs. AI', 890: 'Co-op vs. AI',
@@ -26,7 +15,8 @@ const QUEUE_NAMES: Record<number, string> = {
 
 export const queueName = (queueId: number) => QUEUE_NAMES[queueId] ?? 'Summoner\'s Rift';
 
-export const inQueue = (queueId: number, filter: QueueFilter) => filter === 'all' || QUEUE_IDS[filter].includes(queueId);
+/** Smite: a "jungle" game without it was the client guessing the lane wrong. */
+const SMITE = 11;
 
 /** One player's line from one game. */
 export interface PlayerGame {
@@ -65,6 +55,11 @@ export function roleOf(timeline: LcuParticipant['timeline']): Role | null {
   return null;
 }
 
+/** The client's lane is a guess from where a player stood early on; a jungler always takes Smite. */
+function placeRole(role: Role | null, spells: number[]): Role | null {
+  return role === 'jungle' && !spells.includes(SMITE) ? null : role;
+}
+
 const isRemake = (game: LcuGame, p: LcuParticipant) => game.gameDuration < REMAKE_SECONDS || !!p.stats.gameEndedInEarlySurrender;
 
 /** The looked-up player's participant: by PUUID, or the only one when the list holds just them. */
@@ -88,7 +83,7 @@ export function playerGames(games: LcuGame[], puuid: string): PlayerGame[] {
         createdAt: g.gameCreation,
         minutes: g.gameDuration / 60,
         championId: p.championId,
-        role: roleOf(p.timeline),
+        role: placeRole(roleOf(p.timeline), [p.spell1Id, p.spell2Id]),
         win: s.win,
         kills: s.kills,
         deaths: s.deaths,
@@ -204,4 +199,31 @@ export function parseRiotId(input: string): { gameName: string; tagLine: string 
   const tagLine = tag.trim();
   if (gameName.length < 1 || gameName.length > 16 || !/^[\p{L}\p{N}]{2,5}$/u.test(tagLine)) return null;
   return { gameName, tagLine };
+}
+
+/** Narrows a player's games. Every field left out (or 'all') keeps every game. */
+export interface GameFilter {
+  /** A game mode, by its name from queueName (e.g. "Ranked Solo/Duo"). */
+  mode?: string | 'all';
+  championId?: number | 'all';
+  role?: Role | 'all';
+  result?: 'all' | 'wins' | 'losses';
+}
+
+export function filterGames(games: PlayerGame[], f: GameFilter): PlayerGame[] {
+  return games.filter((g) =>
+    (!f.mode || f.mode === 'all' || queueName(g.queueId) === f.mode)
+    && (f.championId === undefined || f.championId === 'all' || g.championId === f.championId)
+    && (!f.role || f.role === 'all' || g.role === f.role)
+    && (!f.result || f.result === 'all' || g.win === (f.result === 'wins')));
+}
+
+/** The values a filter can take in these games, most games first: [value, games]. */
+export function filterChoices<T>(games: PlayerGame[], key: (g: PlayerGame) => T | null): [T, number][] {
+  const counts = new Map<T, number>();
+  for (const g of games) {
+    const k = key(g);
+    if (k !== null) counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1]);
 }
