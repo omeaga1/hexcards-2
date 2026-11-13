@@ -4,7 +4,7 @@ import { Button } from './arc/button/button';
 import { Skeleton } from './arc/skeleton/skeleton';
 import { Switch } from './arc/switch/switch';
 import {
-  BRACKET_LABELS, ROLE_LABELS, TRAIT_LABELS, Trait as TraitSchema, championIconUrl, championSplashUrl, loadAbilities, loadChampionBuilds, traitClause,
+  BRACKET_LABELS, ROLE_LABELS, SUMMONER_SPELLS as SPELLS, TRAIT_LABELS, Trait as TraitSchema, championIconUrl, championSplashUrl, loadAbilities, loadChampionBuilds, summonerSpellIconUrl as spellIconUrl, traitClause,
   type AbilityInfo, type Bracket, type BuildVariant, type ChampionBuilds, type ChampionInfo, type ItemInfo, type PickTable, type Role, type RoleTable,
   type RuneData, type Trait,
 } from '@hexcards/data';
@@ -18,18 +18,6 @@ import { RunePage } from './RunePage';
 import { SkillOrder } from './SkillOrder';
 import styles from './ChampionView.module.css';
 
-const SPELLS: Record<number, { name: string; key: string }> = {
-  4: { name: 'Flash', key: 'SummonerFlash' },
-  12: { name: 'Teleport', key: 'SummonerTeleport' },
-  14: { name: 'Ignite', key: 'SummonerDot' },
-  11: { name: 'Smite', key: 'SummonerSmite' },
-  6: { name: 'Ghost', key: 'SummonerHaste' },
-  3: { name: 'Exhaust', key: 'SummonerExhaust' },
-  7: { name: 'Heal', key: 'SummonerHeal' },
-  21: { name: 'Barrier', key: 'SummonerBarrier' },
-  1: { name: 'Cleanse', key: 'SummonerBoost' },
-};
-const spellIconUrl = (version: string, key: string) => `https://ddragon.leagueoflegends.com/cdn/${version}/img/spell/${key}.png`;
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
 
 /** "Crit: The Collector" rather than "Caitlyn Crit: The Collector": the page is already about Caitlyn. */

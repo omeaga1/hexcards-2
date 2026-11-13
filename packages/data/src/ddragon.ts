@@ -136,3 +136,25 @@ export const championSplashUrl = (championKey: string) => `${CDN}/cdn/img/champi
 /** Tall (308×560) loading screen art, the champion's portrait on build cards. */
 export const championLoadingUrl = (championKey: string) => `${CDN}/cdn/img/champion/loading/${artKey(championKey)}_0.jpg`;
 export const championIconUrl = (version: string, championKey: string) => `${CDN}/cdn/${version}/img/champion/${championKey}.png`;
+
+/** A player's profile icon. */
+export const profileIconUrl = (version: string, iconId: number) => `${CDN}/cdn/${version}/img/profileicon/${iconId}.png`;
+
+/** The ranked crest the client shows for a tier, e.g. "GOLD". */
+export const rankEmblemUrl = (tier: string) =>
+  `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${tier.toLowerCase()}.png`;
+
+/** Summoner's Rift summoner spells by ID, with their Data Dragon image key. */
+export const SUMMONER_SPELLS: Record<number, { name: string; key: string }> = {
+  4: { name: 'Flash', key: 'SummonerFlash' },
+  12: { name: 'Teleport', key: 'SummonerTeleport' },
+  14: { name: 'Ignite', key: 'SummonerDot' },
+  11: { name: 'Smite', key: 'SummonerSmite' },
+  6: { name: 'Ghost', key: 'SummonerHaste' },
+  3: { name: 'Exhaust', key: 'SummonerExhaust' },
+  7: { name: 'Heal', key: 'SummonerHeal' },
+  21: { name: 'Barrier', key: 'SummonerBarrier' },
+  1: { name: 'Cleanse', key: 'SummonerBoost' },
+};
+
+export const summonerSpellIconUrl = (version: string, key: string) => `${CDN}/cdn/${version}/img/spell/${key}.png`;

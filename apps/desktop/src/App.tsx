@@ -14,7 +14,9 @@ import { PickSuggestions } from './components/PickSuggestions';
 import { settings } from './lcu/settings';
 import { ChampionView } from './components/ChampionView';
 import { UpdateBanner } from './components/UpdateBanner';
-import { useLeagueClient, type ChampSelectSession } from './lcu/useLeagueClient';
+import { PlayersPage } from './components/PlayersPage';
+import { lcuClient, useLeagueClient, type ChampSelectSession } from './lcu/useLeagueClient';
+import type { LcuClient } from '@hexcards/engine';
 import styles from './App.module.css';
 
 const ROLE_NAMES: Record<string, string> = { top: 'Top', jungle: 'Jungle', middle: 'Mid', bottom: 'Bot', utility: 'Support' };
@@ -44,8 +46,23 @@ function myPick(session: ChampSelectSession | null) {
   return { championId: me.championId || me.championPickIntent, role: me.assignedPosition };
 }
 
+type Page = 'champions' | 'players';
+
 export function App() {
   const client = useLeagueClient();
+  const [page, setPage] = useState<Page>('champions');
+  // Player lookups go through the League client. Development: ?demo=players stands in a pretend one.
+  const [demoPlayers, setDemoPlayers] = useState<LcuClient | null>(null);
+  useEffect(() => {
+    if (!import.meta.env.DEV || client.available) return;
+    void import('./lcu/demoPlayers').then(({ demoPlayersEnabled, demoPlayersClient }) => {
+      if (demoPlayersEnabled()) {
+        setDemoPlayers(demoPlayersClient);
+        setPage('players');
+      }
+    });
+  }, [client.available]);
+  const playersClient = client.connected ? lcuClient : demoPlayers;
   const [game, setGame] = useState<GameData>({ status: 'loading' });
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [runes, setRunes] = useState<RuneData | null>(null);
@@ -152,8 +169,14 @@ export function App() {
   const pick = myPick(client.session);
   const pickId = pick?.championId || null;
   useEffect(() => {
-    if (pickId) setSelectedId(pickId);
+    if (!pickId) return;
+    setSelectedId(pickId);
+    setPage('champions');
   }, [pickId]);
+  const openChampion = (id: number | null) => {
+    setSelectedId(id);
+    setPage('champions');
+  };
 
   const champions = game.status === 'ready' ? game.champions : undefined;
   const pickedChampion = pickId ? champions?.get(pickId) : undefined;
@@ -217,11 +240,26 @@ export function App() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <button type="button" className={styles.wordmark} onClick={() => setSelectedId(null)}>
-          Hex Cards
-        </button>
+        <div className={styles.brand}>
+          <button type="button" className={styles.wordmark} onClick={() => openChampion(null)}>
+            Hex Cards
+          </button>
+          <nav className={styles.nav} aria-label="Sections">
+            {([['champions', 'Champions'], ['players', 'Players']] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={styles.navButton}
+                aria-current={page === value ? 'page' : undefined}
+                onClick={() => (value === 'champions' && page === 'champions' ? setSelectedId(null) : setPage(value))}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        </div>
         <div className={styles.status}>
-          {available.length > 1 && (
+          {page === 'champions' && available.length > 1 && (
             <SegmentedControl
               label="Rank"
               value={activeBracket}
@@ -229,7 +267,7 @@ export function App() {
               options={available.map((b) => ({ value: b, label: BRACKET_LABELS[b] }))}
             />
           )}
-          {bracketData && index && (
+          {page === 'champions' && bracketData && index && (
             <Badge tone="neutral" size="sm">
               {BRACKET_RANKS[bracketData.bracket]} · patch {index.patch} · {index.games.toLocaleString()} games
             </Badge>
@@ -268,18 +306,18 @@ export function App() {
               opponent={suggestions.opponent}
               suggestions={suggestions.suggestions}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={openChampion}
             />
           )}
         </section>
       )}
 
-      {(game.status === 'loading' || (!latestError && !bracketData && !bracketError)) && <Skeleton label="Loading champions" lines={6} />}
+      {(game.status === 'loading' || (page === 'champions' && !latestError && !bracketData && !bracketError)) && <Skeleton label="Loading champions" lines={6} />}
       {game.status === 'error' && (
         <p className={styles.error}>Couldn't load champion and item data from Riot. Check your connection and restart. ({game.message})</p>
       )}
-      {latestError && <p className={styles.error}>Couldn't load builds. Check your connection and restart. ({latestError})</p>}
-      {bracketError && (
+      {page === 'champions' && latestError && <p className={styles.error}>Couldn't load builds. Check your connection and restart. ({latestError})</p>}
+      {page === 'champions' && bracketError && (
         <div className={styles.errorRow} role="alert">
           <p className={styles.error}>
             Couldn't load {BRACKET_LABELS[activeBracket]} builds
@@ -288,7 +326,18 @@ export function App() {
           <Button variant="secondary" size="sm" onClick={() => setRetry((n) => n + 1)}>Try again</Button>
         </div>
       )}
-      {game.status === 'ready' && bracketData && latest && (
+      {page === 'players' && game.status === 'ready' && (
+        <PlayersPage
+          client={playersClient}
+          desktop={client.available}
+          version={game.version}
+          champions={game.champions}
+          items={game.items}
+          runes={runes}
+          onOpenChampion={openChampion}
+        />
+      )}
+      {page === 'champions' && game.status === 'ready' && bracketData && latest && (
         // Dims while the next rank's data loads; what's on screen stays put so filters and scroll survive.
         <div className={styles.content} aria-busy={switching || undefined} data-switching={switching || undefined}>
           {selected ? (

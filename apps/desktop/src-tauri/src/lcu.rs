@@ -39,18 +39,45 @@ const ALLOWED: &[(&str, &str)] = &[
     ("PUT", "/lol-perks/v1/currentpage"),
     ("GET", "/lol-item-sets/v1/item-sets/*/sets"),
     ("PUT", "/lol-item-sets/v1/item-sets/*/sets"),
+    // Player stats: the same profile, rank and match history the client's own profile pages show.
+    ("GET", "/lol-summoner/v1/summoners"),
+    ("GET", "/lol-summoner/v2/summoners/puuid/*"),
+    ("GET", "/player-account/aliases/v1/lookup"),
+    ("GET", "/lol-ranked/v1/ranked-stats/*"),
+    ("GET", "/lol-match-history/v1/products/lol/*/matches"),
+    ("GET", "/lol-match-history/v1/games/*"),
 ];
 
+/// Paths that take a query string, e.g. `?name=Faker%23KR1` or `?begIndex=0&endIndex=20`.
+const QUERY_ALLOWED: &[&str] = &[
+    "/lol-summoner/v1/summoners",
+    "/player-account/aliases/v1/lookup",
+    "/lol-match-history/v1/products/lol/*/matches",
+];
+
+fn matches(pattern: &str, segments: &[&str]) -> bool {
+    let pattern: Vec<&str> = pattern.split('/').collect();
+    pattern.len() == segments.len()
+        && pattern.iter().zip(segments).all(|(p, s)| {
+            // IDs and PUUIDs: letters, digits, "-" and "_". Never "." or an encoded slash.
+            if *p == "*" { !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') } else { p == s }
+        })
+}
+
 pub fn is_allowed(method: &str, path: &str) -> bool {
+    let (path, query) = match path.split_once('?') {
+        Some((p, q)) => (p, Some(q)),
+        None => (path, None),
+    };
     let segments: Vec<&str> = path.split('/').collect();
-    ALLOWED.iter().any(|(m, pattern)| {
-        let pattern: Vec<&str> = pattern.split('/').collect();
-        m.eq_ignore_ascii_case(method)
-            && pattern.len() == segments.len()
-            && pattern.iter().zip(&segments).all(|(p, s)| {
-                if *p == "*" { !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') } else { p == s }
-            })
-    })
+    if let Some(query) = query {
+        // Percent-encoded values only, so a query can't smuggle in another path or fragment.
+        let safe = !query.is_empty() && query.chars().all(|c| c.is_ascii_alphanumeric() || "%=&-_.+".contains(c));
+        if !safe || !QUERY_ALLOWED.iter().any(|p| matches(p, &segments)) {
+            return false;
+        }
+    }
+    ALLOWED.iter().any(|(m, pattern)| m.eq_ignore_ascii_case(method) && matches(pattern, &segments))
 }
 
 pub fn tls_connector() -> Result<native_tls::TlsConnector, native_tls::Error> {
@@ -120,5 +147,20 @@ mod tests {
         assert!(!is_allowed("GET", "/lol-perks/v1/pages/123/../../x"));
         assert!(!is_allowed("POST", "/lol-login/v1/session"));
         assert!(!is_allowed("PUT", "/lol-perks/v1/pages/"));
+    }
+
+    #[test]
+    fn allows_player_lookups_with_safe_queries() {
+        assert!(is_allowed("GET", "/lol-summoner/v1/summoners?name=Hide%20on%20bush%23KR1"));
+        assert!(is_allowed("GET", "/player-account/aliases/v1/lookup?gameName=Faker&tagLine=KR1"));
+        assert!(is_allowed("GET", "/lol-ranked/v1/ranked-stats/a1B2-c3_D4"));
+        assert!(is_allowed("GET", "/lol-match-history/v1/products/lol/a1B2-c3_D4/matches?begIndex=0&endIndex=20"));
+        assert!(is_allowed("GET", "/lol-match-history/v1/games/5123456789"));
+        assert!(!is_allowed("GET", "/lol-summoner/v1/summoners?name=x#y"));
+        assert!(!is_allowed("GET", "/lol-summoner/v1/summoners?name=../../lol-login"));
+        assert!(!is_allowed("GET", "/lol-ranked/v1/ranked-stats/abc?x=1"));
+        assert!(!is_allowed("GET", "/lol-perks/v1/pages?x=1"));
+        assert!(!is_allowed("GET", "/lol-match-history/v1/games/.."));
+        assert!(!is_allowed("POST", "/lol-summoner/v1/summoners?name=a"));
     }
 }

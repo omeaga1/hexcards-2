@@ -1,3 +1,5 @@
+import type { PlayerRef } from './players';
+
 // Per-device conveniences. Everything still works if storage is unavailable.
 
 const read = (key: string) => {
@@ -42,4 +44,22 @@ export const settings = {
     return b === 'new' || b === 'climbing' ? b : 'pro';
   },
   setBracket: (b: 'new' | 'climbing' | 'pro') => write('hexcards.bracket', b),
+  /** Players you pinned on the Players page, in the order you pinned them. */
+  pinnedPlayers: (): PlayerRef[] => readPlayers('hexcards.pinnedPlayers'),
+  setPinnedPlayers: (players: PlayerRef[]) => write('hexcards.pinnedPlayers', JSON.stringify(players)),
+  /** Players you looked up, newest first. */
+  recentPlayers: (): PlayerRef[] => readPlayers('hexcards.recentPlayers'),
+  setRecentPlayers: (players: PlayerRef[]) => write('hexcards.recentPlayers', JSON.stringify(players)),
 };
+
+function readPlayers(key: string): PlayerRef[] {
+  try {
+    const list = JSON.parse(read(key) ?? '[]');
+    return Array.isArray(list)
+      ? list.filter((p): p is PlayerRef => typeof p?.puuid === 'string' && typeof p?.gameName === 'string' && typeof p?.tagLine === 'string')
+          .map((p) => ({ ...p, profileIconId: Number.isInteger(p.profileIconId) ? p.profileIconId : 29 }))
+      : [];
+  } catch {
+    return [];
+  }
+}
