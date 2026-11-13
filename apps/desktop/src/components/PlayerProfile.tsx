@@ -164,7 +164,7 @@ export function PlayerProfile({
           if (cancelled) return;
           setBusy(false);
           setHistory({ status: 'ready', value: dedupe(pages.flat()) });
-          if (!source.paged || pages[pages.length - 1]!.length < HISTORY_PAGE) setMore({ loading: false, done: true });
+          if (!source.paged || pages[pages.length - 1]!.length === 0) setMore({ loading: false, done: true });
         });
       })
       .catch(fail);
@@ -180,7 +180,8 @@ export function PlayerProfile({
       .then((page) => {
         setHistory((h) => (h.status === 'ready' ? { status: 'ready', value: dedupe([...h.value, ...page]) } : h));
         setRows((n) => n + ROWS);
-        setMore({ loading: false, done: page.length < HISTORY_PAGE });
+        // A merged source can drop games it already showed, so only an empty page means the end.
+        setMore({ loading: false, done: page.length === 0 });
       })
       .catch((err: Error) => setMore({ loading: false, done: false, error: err.message }));
   };
@@ -264,7 +265,7 @@ export function PlayerProfile({
           title={history.private ? 'Match history is private' : 'Couldn\'t load match history'}
           description={history.private
             ? 'This player has hidden their games in the League client, so there are no stats to show.'
-            : `${history.message} ${source.kind === 'client' ? 'Check that League is still open, then try again.' : 'Check the Riot ID and region, then try again.'}`}
+            : `${history.message} ${source.kind === 'client' ? 'Check that League is still open, then try again.' : 'Check the Riot ID, region and your connection, then try again.'}`}
           action={history.private ? undefined : <Button variant="secondary" onClick={() => setRefresh((n) => n + 1)}>Try again</Button>}
         />
       ) : (
@@ -279,7 +280,7 @@ export function PlayerProfile({
                     : `Reading match history from ${source.label}`}
                 </p>
                 {loaded && source.kind === 'opgg' && (
-                  <p className={styles.caption}>OP.GG keeps a player's last 20 games. With League open, players on your server load from the client, which goes further back.</p>
+                  <p className={styles.caption}>OP.GG keeps a player's last 20 games. With League open, players on your server also get the client's recent games.</p>
                 )}
               </div>
             </div>
