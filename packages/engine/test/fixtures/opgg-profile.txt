@@ -1,0 +1,7 @@
+class LolGetSummonerProfile: data
+class Data: summoner
+class Summoner: puuid,game_name,tagline,profile_image_url,level,league_stats
+class LeagueStat: game_type,tier_info,win,lose
+class TierInfo: tier,division,lp
+
+LolGetSummonerProfile(Data(Summoner("XbXYoWgmpJEwCvxzt9B5vtVZCf6HyqDKd1vSLULuOzKY22q2NMirjt3u75JjyUZumP7RMXU07pPNGQ","Hide on bush","KR1","https://opgg-static.akamaized.net/meta/images/profile_icons/profileIcon6.jpg",946,[LeagueStat("SOLORANKED",TierInfo("MASTER",1,1281),448,371),LeagueStat("FLEXRANKED",TierInfo(null,null,null),null,null),LeagueStat("ARENA",TierInfo(null,null,null),null,null)])))

@@ -1,5 +1,6 @@
 mod lcu;
 mod lockfile;
+mod opgg;
 
 use futures_util::{SinkExt, StreamExt};
 use lcu::{Lcu, LcuResponse};
@@ -46,6 +47,12 @@ async fn lcu_status(state: State<'_, Arc<AppState>>) -> Result<bool, String> {
 async fn lcu_request(state: State<'_, Arc<AppState>>, method: String, path: String, body: Option<Value>) -> Result<LcuResponse, String> {
     let lcu = state.lcu.read().await.clone().ok_or("League client isn't running.")?;
     lcu.request(&method, &path, body).await.map_err(|e| e.to_string())
+}
+
+/// Player stats from OP.GG, for when the League client isn't running.
+#[tauri::command]
+async fn opgg_call(tool: String, arguments: Value) -> Result<String, String> {
+    opgg::call(&tool, arguments).await
 }
 
 /// Waits for the League client, keeps one event connection open, and reconnects when the client restarts.
@@ -113,7 +120,7 @@ pub fn run() {
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     builder
         .manage(state.clone())
-        .invoke_handler(tauri::generate_handler![lcu_status, lcu_request])
+        .invoke_handler(tauri::generate_handler![lcu_status, lcu_request, opgg_call])
         .setup(move |app| {
             let handle = app.app_handle().clone();
             tauri::async_runtime::spawn(supervise(handle, state));

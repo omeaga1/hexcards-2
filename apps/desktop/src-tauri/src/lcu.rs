@@ -40,6 +40,7 @@ const ALLOWED: &[(&str, &str)] = &[
     ("GET", "/lol-item-sets/v1/item-sets/*/sets"),
     ("PUT", "/lol-item-sets/v1/item-sets/*/sets"),
     // Player stats: the same profile, rank and match history the client's own profile pages show.
+    ("GET", "/riotclient/region-locale"),
     ("GET", "/lol-summoner/v1/summoners"),
     ("GET", "/lol-summoner/v2/summoners/puuid/*"),
     ("GET", "/player-account/aliases/v1/lookup"),
