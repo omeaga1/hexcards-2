@@ -401,3 +401,40 @@
   .hideNarrow { display: none; }
   .table th, .table td { padding-left: var(--space-3); padding-right: var(--space-3); }
 }
+
+.caption {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Game mode, champion, role and result: each narrows every number, table and game below. */
+.filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: var(--space-3) var(--space-4);
+}
+.resultFilter {
+  display: grid;
+  gap: var(--space-2);
+}
+.filterLabel {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.filterSummary {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .resultFilter { grid-column: 1 / -1; }
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LcuGame, LcuParticipant } from '@hexcards/data';
-import { championForm, inQueue, kdaRatio, killParticipation, parseRiotId, playerGames, roleForm, roleOf, streak, totals } from '../src';
+import { championForm, filterChoices, filterGames, kdaRatio, killParticipation, parseRiotId, playerGames, roleForm, roleOf, streak, totals } from '../src';
 
 const ME = 'me-puuid';
 
@@ -111,12 +111,33 @@ describe('killParticipation', () => {
   });
 });
 
-describe('inQueue', () => {
-  it('groups queues', () => {
-    expect(inQueue(420, 'solo')).toBe(true);
-    expect(inQueue(440, 'solo')).toBe(false);
-    expect(inQueue(490, 'normal')).toBe(true);
-    expect(inQueue(700, 'all')).toBe(true);
+describe('filterGames', () => {
+  const lines = playerGames([
+    game(1, participant(1, { championId: 10, win: false })),
+    game(2, participant(1, { championId: 20 }), { queueId: 400 }),
+    game(3, participant(1, { championId: 20, lane: 'BOTTOM', role: 'CARRY' }), { queueId: 400 }),
+    game(4, participant(1, { championId: 10 }), { queueId: 440 }),
+  ], ME);
+
+  it('narrows by mode, champion, role and result together', () => {
+    expect(filterGames(lines, {}).length).toBe(4);
+    expect(filterGames(lines, { mode: 'Normal Draft' }).map((g) => g.gameId)).toEqual([3, 2]);
+    expect(filterGames(lines, { championId: 10, result: 'losses' }).map((g) => g.gameId)).toEqual([1]);
+    expect(filterGames(lines, { mode: 'Normal Draft', role: 'top' }).map((g) => g.gameId)).toEqual([2]);
+    expect(filterGames(lines, { mode: 'all', championId: 'all', role: 'all', result: 'wins' }).length).toBe(3);
+  });
+
+  it('lists the choices present, most games first', () => {
+    expect(filterChoices(lines, (g) => g.championId)).toEqual([[10, 2], [20, 2]]);
+    expect(filterChoices(lines, (g) => g.role)).toEqual([['top', 3], ['bottom', 1]]);
+  });
+});
+
+describe('jungle without Smite', () => {
+  it('leaves the role unplaced: the client guessed the lane wrong', () => {
+    const p = participant(1, { lane: 'JUNGLE', role: 'NONE' });
+    expect(playerGames([game(1, p)], ME)[0]!.role).toBeNull();
+    expect(playerGames([game(1, { ...p, spell2Id: 11 })], ME)[0]!.role).toBe('jungle');
   });
 });
 

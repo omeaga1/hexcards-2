@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Lock, Pin, PinOff, RotateCw, UserRound } from 'lucide-react';
+import { Lock, Pin, PinOff, RotateCw, UserRound, X } from 'lucide-react';
 import {
   ROLE_LABELS, championIconUrl, profileIconUrl, rankEmblemUrl, roleIconUrl,
   type ChampionInfo, type ItemInfo, type LcuGame, type LcuRankedQueue, type LcuSummoner, type RuneData,
 } from '@hexcards/data';
 import {
-  QUEUE_FILTER_LABELS, championForm, inQueue, playerGames, roleForm, streak, totals,
-  type PlayerGame, type QueueFilter,
+  championForm, filterChoices, filterGames, playerGames, queueName, roleForm, streak, totals,
+  type GameFilter, type PlayerGame,
 } from '@hexcards/engine';
 import { Badge } from './arc/badge/badge';
 import { Button } from './arc/button/button';
 import { EmptyState } from './arc/empty-state/empty-state';
 import SegmentedControl from './arc/segmented-control/segmented-control';
+import { Select } from './arc/select/select';
 import { Skeleton } from './arc/skeleton/skeleton';
 import { MatchList } from './MatchList';
 import { HISTORY_PAGE, PlayerLookupError, toRef, type PlayerRef, type PlayerSource, type Ranks } from '../lcu/players';
@@ -49,6 +50,9 @@ interface PlayerProfileProps {
   items: Map<number, ItemInfo>;
   runes: RuneData | null;
 }
+
+type Filters = Required<GameFilter>;
+const NO_FILTERS: Filters = { mode: 'all', championId: 'all', role: 'all', result: 'all' };
 
 type Load<T> = { status: 'loading' } | { status: 'error'; message: string; private?: boolean } | { status: 'ready'; value: T };
 
@@ -99,8 +103,9 @@ function Stat({ label, value, context }: { label: string; value: string; context
 }
 
 /** The newest results left to right, like the client's recent games strip. */
-function Form({ games }: { games: PlayerGame[] }) {
-  const s = streak(games);
+function Form({ games, showStreak }: { games: PlayerGame[]; showStreak: boolean }) {
+  // Wins-only or losses-only lists are all one result: a streak there would mean nothing.
+  const s = showStreak ? streak(games) : null;
   const shown = games.slice(0, 20);
   return (
     <div className={styles.form}>
@@ -127,7 +132,11 @@ export function PlayerProfile({
   const [ranks, setRanks] = useState<Ranks | null>(null);
   const [history, setHistory] = useState<Load<LcuGame[]>>({ status: 'loading' });
   const [more, setMore] = useState<{ loading: boolean; done: boolean; error?: string }>({ loading: false, done: false });
-  const [queue, setQueue] = useState<QueueFilter>('all');
+  const [filters, setFilters] = useState<Filters>(NO_FILTERS);
+  const setFilter = (next: Partial<Filters>) => {
+    setFilters((f) => ({ ...f, ...next }));
+    setRows(ROWS);
+  };
   const [rows, setRows] = useState(ROWS);
   const [refresh, setRefresh] = useState(0);
   const [busy, setBusy] = useState(true);
@@ -178,7 +187,17 @@ export function PlayerProfile({
 
   const puuid = summoner?.puuid ?? player.puuid;
   const lines = useMemo(() => (history.status === 'ready' ? playerGames(history.value, puuid) : []), [history, puuid]);
-  const shown = useMemo(() => lines.filter((g) => inQueue(g.queueId, queue)), [lines, queue]);
+  const shown = useMemo(() => filterGames(lines, filters), [lines, filters]);
+  const filtered = Object.values(filters).some((v) => v !== 'all');
+  // Each list offers what's in the loaded games, with how many; a choice stays listed while picked.
+  const choices = useMemo(() => {
+    const keep = <T,>(list: [T, number][], picked: T | 'all') => (picked === 'all' || list.some(([v]) => v === picked) ? list : [...list, [picked, 0] as [T, number]]);
+    return {
+      modes: keep(filterChoices(lines, (g) => queueName(g.queueId)), filters.mode),
+      champions: keep(filterChoices(lines, (g) => g.championId), filters.championId),
+      roles: keep(filterChoices(lines, (g) => g.role), filters.role),
+    };
+  }, [lines, filters]);
   const t = useMemo(() => totals(shown), [shown]);
   const championRows = useMemo(() => championForm(shown).slice(0, 6), [shown]);
   const roles = useMemo(() => roleForm(shown), [shown]);
@@ -256,17 +275,54 @@ export function PlayerProfile({
                 <h2 id="form-heading" className={styles.sectionTitle}>Recent form</h2>
                 <p className={styles.note}>
                   {loaded
-                    ? `${shown.length} Summoner's Rift ${shown.length === 1 ? 'game' : 'games'}${queue === 'all' ? '' : ` in ${QUEUE_FILTER_LABELS[queue]}`} from ${source.label}.${skipped > 0 ? ` ${skipped} ARAM, Arena or remade ${skipped === 1 ? 'game is' : 'games are'} left out.` : ''}`
+                    ? `${lines.length} Summoner's Rift ${lines.length === 1 ? 'game' : 'games'} from ${source.label}.${skipped > 0 ? ` ${skipped} ARAM, Arena or remade ${skipped === 1 ? 'game is' : 'games are'} left out.` : ''}`
                     : `Reading match history from ${source.label}`}
                 </p>
+                {loaded && source.kind === 'opgg' && (
+                  <p className={styles.caption}>OP.GG keeps a player's last 20 games. With League open, players on your server load from the client, which goes further back.</p>
+                )}
               </div>
-              <SegmentedControl
-                label="Queue"
-                value={queue}
-                onValueChange={(v) => setQueue(v as QueueFilter)}
-                options={(['all', 'solo', 'flex', 'normal'] as QueueFilter[]).map((q) => ({ value: q, label: q === 'all' ? 'All' : q === 'solo' ? 'Solo/Duo' : q === 'flex' ? 'Flex' : 'Normal' }))}
-              />
             </div>
+
+            {loaded && lines.length > 0 && (
+              <div className={styles.filters} role="group" aria-label="Filter games">
+                <Select
+                  label="Game mode"
+                  value={filters.mode}
+                  onValueChange={(v) => setFilter({ mode: v })}
+                  options={[{ value: 'all', label: `All modes (${lines.length})` }, ...choices.modes.map(([m, n]) => ({ value: m, label: `${m} (${n})` }))]}
+                />
+                <Select
+                  label="Champion"
+                  value={String(filters.championId)}
+                  onValueChange={(v) => setFilter({ championId: v === 'all' ? 'all' : Number(v) })}
+                  options={[{ value: 'all', label: `All champions (${choices.champions.length})` }, ...choices.champions.map(([id, n]) => ({ value: String(id), label: `${champions.get(id)?.name ?? `Champion ${id}`} (${n})` }))]}
+                />
+                <Select
+                  label="Role"
+                  value={filters.role}
+                  onValueChange={(v) => setFilter({ role: v as Filters['role'] })}
+                  options={[{ value: 'all', label: 'All roles' }, ...choices.roles.map(([r, n]) => ({ value: r, label: `${ROLE_LABELS[r]} (${n})` }))]}
+                />
+                <div className={styles.resultFilter}>
+                  <span className={styles.filterLabel} aria-hidden>Result</span>
+                  <SegmentedControl
+                    label="Result"
+                    value={filters.result}
+                    onValueChange={(v) => setFilter({ result: v as Filters['result'] })}
+                    options={[{ value: 'all', label: 'All' }, { value: 'wins', label: 'Wins' }, { value: 'losses', label: 'Losses' }]}
+                  />
+                </div>
+                {filtered && (
+                  <div className={styles.filterSummary}>
+                    <span>Showing {shown.length} of {lines.length} games</span>
+                    <Button variant="ghost" size="sm" onClick={() => setFilter(NO_FILTERS)}>
+                      <X size={16} aria-hidden /> Clear filters
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {!loaded ? (
               <div className={styles.stats}>
@@ -274,9 +330,9 @@ export function PlayerProfile({
               </div>
             ) : shown.length === 0 ? (
               <EmptyState
-                title={queue === 'all' ? 'No Summoner\'s Rift games yet' : `No ${QUEUE_FILTER_LABELS[queue]} games`}
-                description={queue === 'all' ? 'Recent games are all on other maps. Rift games show here once this player has some.' : 'None of the recent games were in this queue. Pick All to see every Rift game.'}
-                action={queue === 'all' ? undefined : <Button variant="secondary" onClick={() => setQueue('all')}>Show all queues</Button>}
+                title={lines.length === 0 ? 'No Summoner\'s Rift games yet' : 'No games match these filters'}
+                description={lines.length === 0 ? 'Recent games are all on other maps. Rift games show here once this player has some.' : 'None of the loaded games fit every filter. Clear one to see more.'}
+                action={lines.length === 0 ? undefined : <Button variant="secondary" onClick={() => setFilter(NO_FILTERS)}>Clear filters</Button>}
               />
             ) : (
               <>
@@ -290,7 +346,7 @@ export function PlayerProfile({
                     context={t.visionPerMin !== null ? `${one(t.visionPerMin)} vision score per minute` : `${Math.round(t.damage).toLocaleString()} to champions per game`}
                   />
                 </div>
-                <Form games={shown} />
+                <Form games={shown} showStreak={filters.result === 'all'} />
               </>
             )}
           </section>
