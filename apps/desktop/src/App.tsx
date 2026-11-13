@@ -66,6 +66,8 @@ export function App() {
   const [game, setGame] = useState<GameData>({ status: 'loading' });
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [runes, setRunes] = useState<RuneData | null>(null);
+  const [runesFailed, setRunesFailed] = useState(false);
+  const [runesRetry, setRunesRetry] = useState(0);
   const [latest, setLatest] = useState<Latest | null>(null);
   const [latestError, setLatestError] = useState<string | null>(null);
   const [bracket, setBracket] = useState<Bracket>('pro');
@@ -110,15 +112,32 @@ export function App() {
           });
       })
       .catch((err: Error) => !cancelled && setLatestError(err.message));
-    loadRunes()
-      .then((r) => !cancelled && setRunes(r))
-      .catch(() => {
-        // Rune names and icons are optional; the rest of the page still works.
-      });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Rune names and icons for the rune page. A slow or dropped connection gets a few more tries
+  // before the page offers its own Try again; builds and import work without them either way.
+  useEffect(() => {
+    if (!latest || runes) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    setRunesFailed(false);
+    const attempt = (n: number) =>
+      loadRunes(BUILDS_BASE, latest.patch)
+        .then((r) => !cancelled && setRunes(r))
+        .catch(() => {
+          if (cancelled) return;
+          if (n < 2) timer = setTimeout(() => attempt(n + 1), [3_000, 10_000][n]);
+          else setRunesFailed(true);
+        });
+    attempt(0);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [latest?.patch, runesRetry]);
 
   const available = useMemo(
     () => BRACKETS.filter((b) => (latest?.brackets[b] ?? 0) >= MIN_BRACKET_GAMES),
@@ -346,6 +365,8 @@ export function App() {
               version={game.version}
               items={game.items}
               runes={runes}
+              runesFailed={runesFailed}
+              onRetryRunes={() => setRunesRetry((n) => n + 1)}
               champion={selected}
               source={hasBuild(selected.id) ? { base: BUILDS_BASE, patch: latest.patch, bracket: bracketData.bracket } : null}
               roles={bracketData.roles}

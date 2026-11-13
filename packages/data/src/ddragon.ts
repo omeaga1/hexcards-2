@@ -74,8 +74,11 @@ export async function loadAbilities(version: string, championKey: string): Promi
   ];
 }
 
-// Rune names, icons and summaries come from CommunityDragon, which mirrors the League client's own
-// rune data (Data Dragon leaves out stat shards).
+// Rune names, summaries and tree layouts come from the League client's own rune data, which
+// CommunityDragon mirrors (Data Dragon leaves out stat shards). CommunityDragon can take many seconds
+// to answer, or not answer at all, so the pipeline copies what the app needs into each patch's
+// runes.json next to the builds, and the app reads that first. Icons come from Data Dragon, which
+// hosts every rune and tree icon under the client's own paths.
 const CDRAGON = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default';
 
 export interface RuneInfo {
@@ -98,29 +101,69 @@ export interface RuneData {
   styles: Map<number, RuneStyle>;
 }
 
-/** "/lol-game-data/assets/v1/perk-images/X.png" → CommunityDragon URL (which is all lowercase). */
-const cdragonAsset = (path: string) => `${CDRAGON}/${path.replace(/^\/lol-game-data\/assets\//, '').toLowerCase()}`;
+/** The published <patch>/runes.json: the same as RuneData, as plain lists. */
+export interface PublishedRunes {
+  perks: RuneInfo[];
+  styles: RuneStyle[];
+}
+
+/** The client's perks.json and perkstyles.json, as CommunityDragon serves them. */
+export type ClientPerk = { id: number; name: string; iconPath: string; shortDesc: string };
+type ClientSlot = { type: string; perks: number[] };
+export type ClientPerkStyles = { styles: { id: number; name: string; iconPath: string; tooltip: string; slots: ClientSlot[] }[] };
+
+const ASSETS = '/lol-game-data/assets/v1/';
+/** "/lol-game-data/assets/v1/perk-images/X.png" → the same image on Data Dragon (else CommunityDragon, all lowercase). */
+const runeIcon = (path: string) =>
+  path.startsWith(ASSETS) ? `${CDN}/cdn/img/${path.slice(ASSETS.length)}` : `${CDRAGON}/${path.replace(/^\/lol-game-data\/assets\//, '').toLowerCase()}`;
 
 const stripTags = (html: string) => html.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 
-export async function loadRunes(): Promise<RuneData> {
-  const [perksRes, stylesRes] = await Promise.all([fetch(`${CDRAGON}/v1/perks.json`), fetch(`${CDRAGON}/v1/perkstyles.json`)]);
-  if (!perksRes.ok || !stylesRes.ok) throw new Error(`CommunityDragon runes: HTTP ${perksRes.status}/${stylesRes.status}`);
-  const perks = (await perksRes.json()) as { id: number; name: string; iconPath: string; shortDesc: string }[];
-  type Slot = { type: string; perks: number[] };
-  const styles = (await stylesRes.json()) as { styles: { id: number; name: string; iconPath: string; tooltip: string; slots: Slot[] }[] };
-  const perksOf = (slots: Slot[], stat: boolean) => slots.filter((slot) => (slot.type === 'kStatMod') === stat).map((slot) => slot.perks);
+/** The client's rune data, cut down to what the rune page shows. The pipeline publishes this. */
+export function publishedRunes(perks: ClientPerk[], styles: ClientPerkStyles): PublishedRunes {
+  const rowsOf = (slots: ClientSlot[], stat: boolean) => slots.filter((slot) => (slot.type === 'kStatMod') === stat).map((slot) => slot.perks);
+  // Only perks that sit in a tree: the rest are retired runes and internal entries.
+  const used = new Set(styles.styles.flatMap((s) => (s.slots ?? []).flatMap((slot) => slot.perks)));
   return {
-    perks: new Map(perks.map((p) => [p.id, { id: p.id, name: p.name, icon: cdragonAsset(p.iconPath), summary: stripTags(p.shortDesc) }])),
-    styles: new Map(styles.styles.map((s) => [s.id, {
+    perks: perks.filter((p) => used.has(p.id)).map((p) => ({ id: p.id, name: p.name, icon: runeIcon(p.iconPath), summary: stripTags(p.shortDesc) })),
+    styles: styles.styles.map((s) => ({
       id: s.id,
       name: s.name,
-      icon: cdragonAsset(s.iconPath),
+      icon: runeIcon(s.iconPath),
       summary: s.tooltip,
-      rows: perksOf(s.slots ?? [], false),
-      shardRows: perksOf(s.slots ?? [], true),
-    }])),
+      rows: rowsOf(s.slots ?? [], false),
+      shardRows: rowsOf(s.slots ?? [], true),
+    })),
   };
+}
+
+export const toRuneData = (r: PublishedRunes): RuneData => ({
+  perks: new Map(r.perks.map((p) => [p.id, p])),
+  styles: new Map(r.styles.map((s) => [s.id, s])),
+});
+
+async function fetchJson<T>(url: string, timeoutMs: number): Promise<T> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+/**
+ * Rune names, icons, summaries and tree layouts: from the patch's published runes.json, or straight
+ * from CommunityDragon for patches published before it existed or if that file can't be reached.
+ */
+export async function loadRunes(base: string, patch: string): Promise<RuneData> {
+  try {
+    const published = await fetchJson<PublishedRunes>(`${base}/${patch}/runes.json`, 10_000);
+    if (published.perks?.length && published.styles?.length) return toRuneData(published);
+  } catch {
+    // Falls through to CommunityDragon.
+  }
+  const [perks, styles] = await Promise.all([
+    fetchJson<ClientPerk[]>(`${CDRAGON}/v1/perks.json`, 45_000),
+    fetchJson<ClientPerkStyles>(`${CDRAGON}/v1/perkstyles.json`, 45_000),
+  ]);
+  return toRuneData(publishedRunes(perks, styles));
 }
 
 export const itemIconUrl = (version: string, itemId: number) => `${CDN}/cdn/${version}/img/item/${itemId}.png`;

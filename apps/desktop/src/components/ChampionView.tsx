@@ -14,7 +14,7 @@ import { BuildDeck } from './BuildDeck';
 import { BuildLane } from './BuildLane';
 import { ImportPanel } from './ImportPanel';
 import { RolePills } from './RolePills';
-import { RunePage } from './RunePage';
+import { RunePage, RunePageSkeleton, RunePageUnavailable } from './RunePage';
 import { SkillOrder } from './SkillOrder';
 import styles from './ChampionView.module.css';
 
@@ -64,8 +64,10 @@ function roleFor(roles: ChampionBuilds[], current: Role | null, preferred: Role 
 interface ChampionViewProps {
   version: string;
   items: Map<number, ItemInfo>;
-  /** Null while loading or if CommunityDragon is unreachable. */
+  /** Rune names and icons. Null while loading or after every try failed (runesFailed). */
   runes: RuneData | null;
+  runesFailed: boolean;
+  onRetryRunes: () => void;
   champion: ChampionInfo;
   /** Where published builds live, the patch and rank bracket. Null when this champion has no builds. */
   source: { base: string; patch: string; bracket: Bracket } | null;
@@ -89,7 +91,7 @@ interface ChampionViewProps {
 type BuildState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; roles: ChampionBuilds[] };
 
 export function ChampionView({
-  version, items, runes, champion, source, roles: roleTable, bracket, rolesByBracket, preferredRole, matchup, picks, champions, connected, inChampSelect, onBack,
+  version, items, runes, runesFailed, onRetryRunes, champion, source, roles: roleTable, bracket, rolesByBracket, preferredRole, matchup, picks, champions, connected, inChampSelect, onBack,
 }: ChampionViewProps) {
   const [abilities, setAbilities] = useState<AbilityInfo[] | null>(null);
   const [builds, setBuilds] = useState<BuildState>({ status: 'loading' });
@@ -226,7 +228,7 @@ export function ChampionView({
       ) : builds.status === 'error' ? (
         <p className={styles.note}>Couldn't load {champion.name}'s builds. ({builds.message})</p>
       ) : current ? (
-        <Builds key={current.role} version={version} items={items} runes={runes} abilities={abilities} builds={current} champion={champion} matchup={matchup} connected={connected} inChampSelect={inChampSelect} />
+        <Builds key={current.role} version={version} items={items} runes={runes} runesFailed={runesFailed} onRetryRunes={onRetryRunes} abilities={abilities} builds={current} champion={champion} matchup={matchup} connected={connected} inChampSelect={inChampSelect} />
       ) : null}
     </div>
   );
@@ -234,7 +236,7 @@ export function ChampionView({
 
 type BuildsProps = Omit<ChampionViewProps, 'onBack' | 'source' | 'preferredRole' | 'roles' | 'bracket' | 'rolesByBracket' | 'picks' | 'champions'> & { builds: ChampionBuilds; abilities: AbilityInfo[] | null };
 
-function Builds({ version, items, runes, abilities, builds, champion, matchup, connected, inChampSelect }: BuildsProps) {
+function Builds({ version, items, runes, runesFailed, onRetryRunes, abilities, builds, champion, matchup, connected, inChampSelect }: BuildsProps) {
   const [variantId, setVariantId] = useState(builds.variants[0]!.id);
   const [traits, setTraits] = useState<Set<Trait>>(new Set());
   // In champ select, the teams decide which swaps light up, and update as picks lock in.
@@ -311,7 +313,9 @@ function Builds({ version, items, runes, abilities, builds, champion, matchup, c
               ))}
             </p>
           </div>
-          {runes ? <RunePage page={variant.runes} runes={runes} /> : <p className={styles.note}>Couldn't load rune details.</p>}
+          {runes ? <RunePage page={variant.runes} runes={runes} />
+            : runesFailed ? <RunePageUnavailable onRetry={onRetryRunes} />
+            : <RunePageSkeleton />}
         </section>
 
         <section className={styles.panel} aria-labelledby="skills-heading">

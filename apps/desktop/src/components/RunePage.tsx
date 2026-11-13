@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+import { Button } from './arc/button/button';
 import { HoverCard } from './arc/hover-card/hover-card';
 import type { RuneData, RunePage as RunePageData, RuneStyle } from '@hexcards/data';
 import styles from './RunePage.module.css';
@@ -80,6 +82,44 @@ export function RunePage({ page, runes }: RunePageProps) {
           {shardRows.map((ids, i) => row(ids, 'shard', shards[i], ['Offense shard', 'Flex shard', 'Defense shard'][i] ?? `Shard ${i + 1}`))}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** The rune page's shape while rune names and icons load, so the panel doesn't jump when they arrive. */
+export function RunePageSkeleton() {
+  // Primary: keystone, three rows. Secondary: two rows, then three shard rows.
+  const tree = (rows: { size: Size; count: number }[], offset: number) => (
+    <div className={styles.tree}>
+      <span className={styles.ghostLabel} style={{ '--index': offset } as CSSProperties} />
+      {rows.map(({ size, count }, i) => (
+        <div key={i} className={styles.row} data-size={size}>
+          <span className={styles.options}>
+            {Array.from({ length: count }, (_, j) => (
+              <span key={j} className={styles.ghost} data-size={size} style={{ '--index': offset + i + 1 } as CSSProperties} />
+            ))}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+  return (
+    <div className={styles.page} role="status" aria-label="Loading runes">
+      {tree([{ size: 'keystone', count: 4 }, { size: 'minor', count: 3 }, { size: 'minor', count: 3 }, { size: 'minor', count: 3 }], 0)}
+      {tree([{ size: 'minor', count: 3 }, { size: 'minor', count: 3 }, { size: 'shard', count: 3 }, { size: 'shard', count: 3 }, { size: 'shard', count: 3 }], 1)}
+    </div>
+  );
+}
+
+/** Rune names and icons couldn't be reached after a few tries. The build's page still imports by ID. */
+export function RunePageUnavailable({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className={styles.unavailable} role="status">
+      <p className={styles.unavailableTitle}>Rune details didn't load</p>
+      <p className={styles.unavailableText}>
+        The rune data didn't respond, so names and icons can't be shown right now. Send to League still imports this page.
+      </p>
+      <Button variant="secondary" size="sm" onClick={onRetry}>Try again</Button>
     </div>
   );
 }
