@@ -8,7 +8,7 @@ import { SearchField } from './arc/search-field/search-field';
 import { Select } from './arc/select/select';
 import { PlayerProfile } from './PlayerProfile';
 import {
-  clientRegion, clientSource, currentPlayer, opggSource, playerKey, toRef, type OpggCall, type PlayerRef, type PlayerSource,
+  clientRegion, clientSource, combinedSource, currentPlayer, opggSource, playerKey, toRef, type OpggCall, type PlayerRef, type PlayerSource,
 } from '../lcu/players';
 import { settings } from '../lcu/settings';
 import styles from './PlayersPage.module.css';
@@ -60,16 +60,20 @@ export function PlayersPage({ client, opgg, version, champions, items, runes, on
   const searchRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // The League client, when it's open, is the source for players on its server; OP.GG for the rest.
+  // OP.GG's games always; with League open, the client adds its own for players on its server.
   const live = useMemo(() => (client ? clientSource(client) : null), [client]);
+  const both = useRef<{ live: PlayerSource; source: PlayerSource } | null>(null);
   const opggSources = useRef(new Map<Region, PlayerSource>());
   const sourceFor = (r: Region): PlayerSource | null => {
-    if (live && clientInfo?.region === r) return live;
-    if (!opgg) return null;
-    let s = opggSources.current.get(r);
-    if (!s) {
+    let s = opgg ? opggSources.current.get(r) ?? null : null;
+    if (opgg && !s) {
       s = opggSource(opgg, r);
       opggSources.current.set(r, s);
+    }
+    if (live && clientInfo?.region === r) {
+      if (!s) return live;
+      if (both.current?.live !== live) both.current = { live, source: combinedSource(s, live) };
+      return both.current.source;
     }
     return s;
   };

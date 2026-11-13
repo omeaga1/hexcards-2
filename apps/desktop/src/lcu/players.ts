@@ -34,7 +34,7 @@ export interface Ranks {
 }
 
 export interface PlayerSource {
-  kind: 'client' | 'opgg';
+  kind: 'client' | 'opgg' | 'both';
   /** For the page: where the numbers come from. */
   label: string;
   /** Whether older games can be loaded past the first pages. */
@@ -91,7 +91,8 @@ export function clientSource(client: LcuClient): PlayerSource {
   return {
     kind: 'client',
     label: 'your League client',
-    paged: true,
+    // The client answers with its latest 20 or so games whatever range is asked for.
+    paged: false,
     find,
     async resolve(ref) {
       if (isClientPuuid(ref.puuid)) return byPuuid(ref.puuid);
@@ -107,7 +108,8 @@ export function clientSource(client: LcuClient): PlayerSource {
       return { solo: isRanked(solo) ? solo : null, flex: isRanked(flex) ? flex : null };
     },
     async history(player, begin) {
-      const res = await client.request<LcuMatchHistory>('GET', `/lol-match-history/v1/products/lol/${player.puuid}/matches?begIndex=${begin}&endIndex=${begin + HISTORY_PAGE}`);
+      if (begin > 0) return [];
+      const res = await client.request<LcuMatchHistory>('GET', `/lol-match-history/v1/products/lol/${player.puuid}/matches?begIndex=0&endIndex=${HISTORY_PAGE}`);
       if (res.status === 403) throw new PlayerLookupError('This player keeps their match history private.');
       if (res.status !== 200) throw new PlayerLookupError(`The League client couldn't load match history (status ${res.status}).`);
       return res.body?.games?.games ?? [];
@@ -179,6 +181,72 @@ export function opggSource(call: OpggCall, region: Region): PlayerSource {
         region, game_id: key.id, created_at: key.createdAt, focus_riot_id: `${player.gameName}#${player.tagLine}`, desired_output_fields: OPGG_GAME_FIELDS,
       });
       return opggGame(parseOpgg(text));
+    },
+  };
+}
+
+// Both ----------------------------------------------------------------------------------------
+
+/** One game, from either source: same start (to the minute or two), same champion for this player. */
+const sameGame = (a: LcuGame, b: LcuGame) =>
+  Math.abs(a.gameCreation - b.gameCreation) < 150_000 && a.participants[0]?.championId === b.participants[0]?.championId;
+
+/** The client and OP.GG name the same player with different PUUIDs; use one throughout. */
+function adopt(game: LcuGame, from: string, to: string): LcuGame {
+  if (from === to) return game;
+  return { ...game, participantIdentities: game.participantIdentities.map((i) => (i.player.puuid === from ? { ...i, player: { ...i.player, puuid: to } } : i)) };
+}
+
+/**
+ * OP.GG's games, always, plus the League client's for a player on your server: each holds about
+ * the latest 20, and they don't always match, so together they show the most. Either one can
+ * fail without hiding the other.
+ */
+export function combinedSource(web: PlayerSource, client: PlayerSource): PlayerSource {
+  interface Seen { web: LcuSummoner | null; client: LcuSummoner | null; webIds: Set<number> }
+  const seen = new Map<string, Seen>();
+  const of = (player: LcuSummoner) => seen.get(player.puuid);
+  return {
+    kind: 'both',
+    label: 'OP.GG and your League client',
+    paged: false,
+    async find(gameName, tagLine) {
+      const [w, c] = await Promise.allSettled([web.find(gameName, tagLine), client.find(gameName, tagLine)]);
+      const found = (w.status === 'fulfilled' && w.value) || (c.status === 'fulfilled' && c.value) || null;
+      if (!found && w.status === 'rejected' && c.status === 'rejected') throw w.reason;
+      return found;
+    },
+    async resolve(ref) {
+      const [w, c] = await Promise.allSettled([web.resolve(ref), client.resolve(ref)]);
+      if (w.status === 'rejected' && c.status === 'rejected') throw w.reason;
+      const ws = w.status === 'fulfilled' ? w.value : null;
+      const cs = c.status === 'fulfilled' ? c.value : null;
+      // OP.GG's identity leads; the client's level and icon are the freshest.
+      const player = ws ? { ...ws, ...(cs ? { summonerLevel: cs.summonerLevel, profileIconId: cs.profileIconId } : {}) } : cs!;
+      seen.set(player.puuid, { web: ws, client: cs, webIds: new Set() });
+      return player;
+    },
+    async ranks(player) {
+      const st = of(player);
+      if (st?.client) return client.ranks(st.client).catch(() => (st.web ? web.ranks(st.web) : { solo: null, flex: null }));
+      return st?.web ? web.ranks(st.web) : { solo: null, flex: null };
+    },
+    async history(player, begin) {
+      const st = of(player);
+      if (!st || begin > 0) return [];
+      const fromClient = async () => (st.client ? (await client.history(st.client, 0)).map((g) => adopt(g, st.client!.puuid, player.puuid)) : []);
+      const [w, c] = await Promise.allSettled([st.web ? web.history(st.web, 0) : Promise.resolve([]), fromClient()]);
+      if (w.status === 'rejected' && c.status === 'rejected') throw w.reason;
+      const webGames = w.status === 'fulfilled' ? w.value : [];
+      st.webIds = new Set(webGames.map((g) => g.gameId));
+      const clientGames = c.status === 'fulfilled' ? c.value.filter((g) => !webGames.some((x) => sameGame(x, g))) : [];
+      return [...webGames, ...clientGames].sort((a, b) => b.gameCreation - a.gameCreation);
+    },
+    async game(player, gameId) {
+      const st = of(player);
+      if (st?.web && st.webIds.has(gameId)) return web.game(st.web, gameId);
+      if (!st?.client) throw new PlayerLookupError('Couldn\'t load that game.');
+      return adopt(await client.game(st.client, gameId), st.client.puuid, player.puuid);
     },
   };
 }
