@@ -1,22 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MonitorSmartphone, Users } from 'lucide-react';
-import { profileIconUrl, type ChampionInfo, type ItemInfo, type LcuSummoner, type RuneData } from '@hexcards/data';
+import { OPGG_REGIONS, REGION_LABELS, profileIconUrl, type ChampionInfo, type ItemInfo, type Region, type RuneData } from '@hexcards/data';
 import { parseRiotId, type LcuClient } from '@hexcards/engine';
 import { Button } from './arc/button/button';
 import { EmptyState } from './arc/empty-state/empty-state';
 import { SearchField } from './arc/search-field/search-field';
+import { Select } from './arc/select/select';
 import { PlayerProfile } from './PlayerProfile';
-import { currentPlayer, findPlayer, toRef, type PlayerRef } from '../lcu/players';
+import {
+  clientRegion, clientSource, currentPlayer, opggSource, playerKey, toRef, type OpggCall, type PlayerRef, type PlayerSource,
+} from '../lcu/players';
 import { settings } from '../lcu/settings';
 import styles from './PlayersPage.module.css';
 
 const MAX_RECENT = 6;
 
+const REGION_OPTIONS = OPGG_REGIONS.map((r) => ({ value: r, label: `${r} · ${REGION_LABELS[r]}` }));
+
 interface PlayersPageProps {
-  /** Null when there's no League client to ask: a plain browser, or League isn't running. */
+  /** The League client when it's running (the freshest data for your server), else null. */
   client: LcuClient | null;
-  /** True in the desktop app, even before League is running. */
-  desktop: boolean;
+  /** OP.GG lookups: any region, League closed. Null only in a plain browser build. */
+  opgg: OpggCall | null;
   version: string;
   champions: Map<number, ChampionInfo>;
   items: Map<number, ItemInfo>;
@@ -26,7 +31,10 @@ interface PlayersPageProps {
 
 type Search = { status: 'idle' } | { status: 'searching' } | { status: 'error'; message: string };
 
-const riotId = (p: { gameName: string; tagLine: string }) => `${p.gameName}#${p.tagLine}`;
+/** The client's server, once asked: undefined while asking, null when unknown. */
+type ClientInfo = { region: Region | null } | undefined;
+
+const same = (a: PlayerRef | null | undefined, b: PlayerRef | null | undefined) => !!a && !!b && (a.puuid === b.puuid || playerKey(a) === playerKey(b));
 
 function PlayerRow({ player, version, active, onSelect, note }: { player: PlayerRef; version: string; active: boolean; onSelect: () => void; note?: string }) {
   return (
@@ -34,43 +42,59 @@ function PlayerRow({ player, version, active, onSelect, note }: { player: Player
       <img src={profileIconUrl(version, player.profileIconId)} alt="" draggable={false} />
       <span className={styles.playerText}>
         <span className={styles.playerName}>{player.gameName}</span>
-        <span className={styles.playerTag}>{note ?? `#${player.tagLine}`}</span>
+        <span className={styles.playerTag}>{note ?? `#${player.tagLine} · ${player.region}`}</span>
       </span>
     </button>
   );
 }
 
-export function PlayersPage({ client, desktop, version, champions, items, runes, onOpenChampion }: PlayersPageProps) {
-  const [me, setMe] = useState<LcuSummoner | null>(null);
-  const [selected, setSelected] = useState<PlayerRef | null>(null);
-  const [pinned, setPinned] = useState<PlayerRef[]>([]);
-  const [recent, setRecent] = useState<PlayerRef[]>([]);
+export function PlayersPage({ client, opgg, version, champions, items, runes, onOpenChampion }: PlayersPageProps) {
+  const [me, setMe] = useState<PlayerRef | null>(() => settings.me());
+  const [selected, setSelected] = useState<PlayerRef | null>(() => settings.me());
+  const [pinned, setPinned] = useState<PlayerRef[]>(() => settings.pinnedPlayers());
+  const [recent, setRecent] = useState<PlayerRef[]>(() => settings.recentPlayers());
+  const [region, setRegion] = useState<Region>(() => settings.region() ?? 'NA');
+  const [clientInfo, setClientInfo] = useState<ClientInfo>(undefined);
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState<Search>({ status: 'idle' });
   const searchRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setPinned(settings.pinnedPlayers());
-    setRecent(settings.recentPlayers());
-  }, []);
+  // The League client, when it's open, is the source for players on its server; OP.GG for the rest.
+  const live = useMemo(() => (client ? clientSource(client) : null), [client]);
+  const opggSources = useRef(new Map<Region, PlayerSource>());
+  const sourceFor = (r: Region): PlayerSource | null => {
+    if (live && clientInfo?.region === r) return live;
+    if (!opgg) return null;
+    let s = opggSources.current.get(r);
+    if (!s) {
+      s = opggSource(opgg, r);
+      opggSources.current.set(r, s);
+    }
+    return s;
+  };
 
-  // You, from the signed-in account: shown first, no typing needed.
+  // With League open: its server becomes the default region, and the signed-in account is you.
   useEffect(() => {
     if (!client) {
-      setMe(null);
+      setClientInfo({ region: null });
       return;
     }
     let cancelled = false;
-    currentPlayer(client)
-      .then((s) => {
-        if (cancelled) return;
-        setMe(s);
-        setSelected((current) => current ?? toRef(s));
-      })
-      .catch(() => {
-        // Signed out or still loading: searching still works.
-      });
+    setClientInfo(undefined);
+    void (async () => {
+      const r = await clientRegion(client);
+      if (cancelled) return;
+      setClientInfo({ region: r });
+      if (!r) return;
+      if (!settings.region()) setRegion(r);
+      const s = await currentPlayer(client).catch(() => null);
+      if (cancelled || !s) return;
+      const ref = toRef(s, r);
+      setMe(ref);
+      settings.setMe(ref);
+      setSelected((current) => current ?? ref);
+    })();
     return () => {
       cancelled = true;
     };
@@ -79,17 +103,23 @@ export function PlayersPage({ client, desktop, version, champions, items, runes,
   const open = (player: PlayerRef) => {
     setSelected(player);
     contentRef.current?.scrollIntoView?.({ block: 'start' });
-    if (me && player.puuid === me.puuid) return;
+    if (same(player, me)) return;
     setRecent((prev) => {
-      const next = [player, ...prev.filter((p) => p.puuid !== player.puuid)].slice(0, MAX_RECENT);
+      const next = [player, ...prev.filter((p) => !same(p, player))].slice(0, MAX_RECENT);
       settings.setRecentPlayers(next);
       return next;
     });
   };
 
   // Keep saved names and icons current: Riot IDs and icons can change.
-  const refreshSaved = (s: LcuSummoner) => {
-    const update = (list: PlayerRef[]) => (list.some((p) => p.puuid === s.puuid) ? list.map((p) => (p.puuid === s.puuid ? toRef(s) : p)) : list);
+  const refreshSaved = (ref: PlayerRef) => {
+    const update = (list: PlayerRef[]) => {
+      const i = list.findIndex((p) => same(p, ref));
+      if (i === -1) return list;
+      const p = list[i]!;
+      if (p.gameName === ref.gameName && p.tagLine === ref.tagLine && p.profileIconId === ref.profileIconId && p.puuid === ref.puuid) return list;
+      return list.map((x, j) => (j === i ? ref : x));
+    };
     setPinned((prev) => {
       const next = update(prev);
       if (next !== prev) settings.setPinnedPlayers(next);
@@ -100,18 +130,42 @@ export function PlayersPage({ client, desktop, version, champions, items, runes,
       if (next !== prev) settings.setRecentPlayers(next);
       return next;
     });
+    setMe((prev) => {
+      if (!prev) return prev;
+      const [next] = update([prev]);
+      if (next !== prev && next) settings.setMe(next);
+      return next ?? prev;
+    });
+  };
+
+  const chooseMe = (player: PlayerRef) => {
+    setMe(player);
+    settings.setMe(player);
+    setRecent((prev) => {
+      const next = prev.filter((p) => !same(p, player));
+      if (next.length !== prev.length) settings.setRecentPlayers(next);
+      return next;
+    });
   };
 
   const togglePin = (player: PlayerRef) => {
     setPinned((prev) => {
-      const next = prev.some((p) => p.puuid === player.puuid) ? prev.filter((p) => p.puuid !== player.puuid) : [...prev, player];
+      const next = prev.some((p) => same(p, player)) ? prev.filter((p) => !same(p, player)) : [...prev, player];
       settings.setPinnedPlayers(next);
       return next;
     });
   };
 
+  const changeRegion = (value: string) => {
+    const r = value as Region;
+    setRegion(r);
+    settings.setRegion(r);
+    if (search.status === 'error') setSearch({ status: 'idle' });
+  };
+
   const submit = async () => {
-    if (!client) return;
+    const source = sourceFor(region);
+    if (!source) return;
     const id = parseRiotId(query);
     if (!id) {
       setSearch({ status: 'error', message: 'Type a Riot ID with its tag, like Name#NA1.' });
@@ -119,16 +173,17 @@ export function PlayersPage({ client, desktop, version, champions, items, runes,
     }
     setSearch({ status: 'searching' });
     try {
-      const found = await findPlayer(client, id.gameName, id.tagLine);
+      const found = await source.find(id.gameName, id.tagLine);
       if (!found) {
-        setSearch({ status: 'error', message: `No player called ${id.gameName}#${id.tagLine} on your server. Check the spelling and tag.` });
+        setSearch({ status: 'error', message: `No player called ${id.gameName}#${id.tagLine} in ${REGION_LABELS[region]}. Check the spelling, tag and region.` });
         return;
       }
       setSearch({ status: 'idle' });
       setQuery('');
-      open(toRef(found));
+      open(toRef(found, region));
     } catch (err) {
-      setSearch({ status: 'error', message: `${(err as Error).message} Check that League is still open.` });
+      const retry = source.kind === 'client' ? 'Check that League is still open.' : 'Check your connection and try again.';
+      setSearch({ status: 'error', message: `${(err as Error).message.replace(/\.?$/, '.')} ${retry}` });
     }
   };
 
@@ -145,24 +200,22 @@ export function PlayersPage({ client, desktop, version, champions, items, runes,
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  if (!client) {
+  if (!opgg && !client) {
     return (
       <div className={styles.waiting}>
         <EmptyState
-          icon={desktop ? <Users size={24} /> : <MonitorSmartphone size={24} />}
-          title={desktop ? 'Open League to look up players' : 'Player stats need the desktop app'}
-          description={
-            desktop
-              ? 'Stats come from your League client\'s match history, the same games your profile shows. Builds and tier lists work without it.'
-              : 'Stats are read from the League client on your computer. Open Hex Cards for Windows with League running to see them.'
-          }
+          icon={<MonitorSmartphone size={24} />}
+          title="Player stats need the desktop app"
+          description="Open Hex Cards for Windows to look up any player's rank, form and match history. League doesn't need to be running."
         />
       </div>
     );
   }
 
-  const isPinned = (p: PlayerRef) => pinned.some((x) => x.puuid === p.puuid);
-  const others = recent.filter((p) => !isPinned(p) && p.puuid !== me?.puuid);
+  const isPinned = (p: PlayerRef) => pinned.some((x) => same(x, p));
+  const others = recent.filter((p) => !isPinned(p) && !same(p, me));
+  // Until the client says which server it's on, wait rather than load from OP.GG and then again from the client.
+  const source = selected && clientInfo !== undefined ? sourceFor(selected.region) : null;
 
   return (
     <div className={styles.layout}>
@@ -188,51 +241,55 @@ export function PlayersPage({ client, desktop, version, champions, items, runes,
             spellCheck={false}
             aria-describedby="player-search-hint"
           />
+          <Select label="Region" value={region} onValueChange={changeRegion} options={REGION_OPTIONS} />
           <Button type="submit" variant="secondary" size="sm" loading={search.status === 'searching'} disabled={!query.trim()}>
             Look up player
           </Button>
           <p id="player-search-hint" className={styles.hint} data-error={search.status === 'error' || undefined} role={search.status === 'error' ? 'alert' : undefined}>
-            {search.status === 'error' ? search.message : 'Riot ID and tag of anyone on your League server.'}
+            {search.status === 'error' ? search.message : 'Anyone\'s Riot ID and tag. League doesn\'t need to be open.'}
           </p>
         </form>
 
-        {me && (
-          <div className={styles.group}>
-            <span className={styles.railTitle}>You</span>
-            <PlayerRow player={toRef(me)} version={version} active={selected?.puuid === me.puuid} onSelect={() => open(toRef(me))} note={`#${me.tagLine} · level ${me.summonerLevel}`} />
-          </div>
-        )}
+        <div className={styles.group}>
+          <span className={styles.railTitle}>You</span>
+          {me ? (
+            <PlayerRow player={me} version={version} active={same(selected, me)} onSelect={() => open(me)} />
+          ) : (
+            <p className={styles.caption}>Look yourself up and choose This is me, and your stats open here first.</p>
+          )}
+        </div>
 
         <div className={styles.group}>
           <span className={styles.railTitle}>Pinned</span>
           {pinned.length === 0 ? (
             <p className={styles.caption}>Pin friends and rivals from their profile to keep them here.</p>
           ) : (
-            pinned.map((p) => <PlayerRow key={p.puuid} player={p} version={version} active={selected?.puuid === p.puuid} onSelect={() => open(p)} />)
+            pinned.map((p) => <PlayerRow key={playerKey(p)} player={p} version={version} active={same(selected, p)} onSelect={() => open(p)} />)
           )}
         </div>
 
         {others.length > 0 && (
           <div className={styles.group}>
             <span className={styles.railTitle}>Recently looked up</span>
-            {others.map((p) => <PlayerRow key={p.puuid} player={p} version={version} active={selected?.puuid === p.puuid} onSelect={() => open(p)} />)}
+            {others.map((p) => <PlayerRow key={playerKey(p)} player={p} version={version} active={same(selected, p)} onSelect={() => open(p)} />)}
           </div>
         )}
 
         <p className={styles.caption}>
-          Stats come from the League client's match history: Summoner's Rift games only, the same ones a profile shows in the client.
+          Summoner's Rift games only. Stats come from your League client when it's open, and from OP.GG when it isn't.
         </p>
       </aside>
 
       <div className={styles.content} ref={contentRef}>
-        {selected ? (
+        {selected && source ? (
           <PlayerProfile
-            key={selected.puuid}
-            client={client}
+            key={`${playerKey(selected)}:${source.kind}`}
+            source={source}
             player={selected}
-            isYou={selected.puuid === me?.puuid}
+            isYou={same(selected, me)}
             pinned={isPinned(selected)}
             onTogglePin={togglePin}
+            onSetMe={chooseMe}
             onResolved={refreshSaved}
             onOpenPlayer={open}
             onOpenChampion={onOpenChampion}
@@ -241,14 +298,14 @@ export function PlayersPage({ client, desktop, version, champions, items, runes,
             items={items}
             runes={runes}
           />
-        ) : (
+        ) : !selected ? (
           <EmptyState
             icon={<Users size={24} />}
             title="Look up a player"
-            description="Search a Riot ID to see their rank, recent form, best champions and match history."
+            description="Search a Riot ID to see their rank, recent form, best champions and match history. Start with yourself."
             action={<Button variant="secondary" onClick={() => searchRef.current?.focus()}>Search players</Button>}
           />
-        )}
+        ) : null}
       </div>
     </div>
   );

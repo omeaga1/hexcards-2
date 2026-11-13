@@ -149,6 +149,7 @@ export const demoPlayersClient: LcuClient = {
     const url = new URL(path, 'https://127.0.0.1');
     const parts = url.pathname.split('/');
     if (url.pathname === '/lol-summoner/v1/current-summoner') return reply<T>(200, ME);
+    if (url.pathname === '/riotclient/region-locale') return reply<T>(200, { region: 'NA', webRegion: 'na', locale: 'en_US' });
     if (url.pathname === '/lol-summoner/v1/summoners') {
       const [gameName = '', tagLine = ''] = (url.searchParams.get('name') ?? '').split('#');
       if (gameName.toLowerCase().includes('nobody')) return reply<T>(404, { message: 'not found' });

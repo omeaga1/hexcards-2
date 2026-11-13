@@ -5,11 +5,11 @@ import {
   type ChampionInfo, type ItemInfo, type LcuGame, type RuneData,
 } from '@hexcards/data';
 import { kdaRatio, killParticipation, queueName, type PlayerGame } from '@hexcards/engine';
-import type { LcuClient } from '@hexcards/engine';
 import { Button } from './arc/button/button';
 import { Skeleton } from './arc/skeleton/skeleton';
 import { ItemIcon } from './ItemIcon';
-import { gameDetail, type PlayerRef } from '../lcu/players';
+import type { PlayerRef } from '../lcu/players';
+import type { Region } from '@hexcards/data';
 import styles from './MatchList.module.css';
 
 const ago = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
@@ -34,9 +34,12 @@ interface Shared {
 }
 
 interface MatchListProps extends Shared {
-  client: LcuClient;
-  /** The player whose history this is. */
+  /** One game with all ten players, from the same source as the list. */
+  loadGame: (gameId: number) => Promise<LcuGame>;
+  /** The player whose history this is, as the source knows them. */
   puuid: string;
+  /** Players in these games are on this region. */
+  region: Region;
   games: PlayerGame[];
   /** Called with a player from an opened game, to look them up. */
   onOpenPlayer: (player: PlayerRef) => void;
@@ -76,7 +79,7 @@ function Items({ version, items, ids, size }: { version: string; items: Map<numb
 }
 
 /** Both teams from one game, as the client's post-game screen lists them. */
-function GameDetail({ game, puuid, onOpenPlayer, ...shared }: Shared & { game: LcuGame; puuid: string; onOpenPlayer: (p: PlayerRef) => void }) {
+function GameDetail({ game, puuid, region, onOpenPlayer, ...shared }: Shared & { game: LcuGame; puuid: string; region: Region; onOpenPlayer: (p: PlayerRef) => void }) {
   const { version, champions, items } = shared;
   const identity = (id: number) => game.participantIdentities.find((i) => i.participantId === id)?.player;
   const mostDamage = Math.max(1, ...game.participants.map((p) => p.stats.totalDamageDealtToChampions));
@@ -125,7 +128,7 @@ function GameDetail({ game, puuid, onOpenPlayer, ...shared }: Shared & { game: L
                           <button
                             type="button"
                             className={styles.playerLink}
-                            onClick={() => onOpenPlayer({ puuid: who.puuid, gameName: name, tagLine: who.tagLine ?? '', profileIconId: who.profileIcon ?? 29 })}
+                            onClick={() => onOpenPlayer({ puuid: who.puuid, gameName: name, tagLine: who.tagLine ?? '', profileIconId: who.profileIcon ?? 29, region })}
                           >
                             {name}
                           </button>
@@ -162,7 +165,7 @@ function GameDetail({ game, puuid, onOpenPlayer, ...shared }: Shared & { game: L
 
 type Detail = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; game: LcuGame };
 
-export function MatchList({ client, puuid, games, onOpenPlayer, onOpenChampion, ...shared }: MatchListProps) {
+export function MatchList({ loadGame, puuid, region, games, onOpenPlayer, onOpenChampion, ...shared }: MatchListProps) {
   const { version, champions, items, runes } = shared;
   const [open, setOpen] = useState<number | null>(null);
   const [details, setDetails] = useState<Record<number, Detail>>({});
@@ -171,7 +174,7 @@ export function MatchList({ client, puuid, games, onOpenPlayer, onOpenChampion, 
 
   const load = (gameId: number) => {
     setDetails((d) => ({ ...d, [gameId]: { status: 'loading' } }));
-    gameDetail(client, gameId)
+    loadGame(gameId)
       .then((game) => setDetails((d) => ({ ...d, [gameId]: { status: 'ready', game } })))
       .catch((err: Error) => setDetails((d) => ({ ...d, [gameId]: { status: 'error', message: err.message } })));
   };
@@ -219,7 +222,7 @@ export function MatchList({ client, puuid, games, onOpenPlayer, onOpenChampion, 
 
               <div className={styles.farm}>
                 <span>{g.cs} CS</span>
-                <span className={styles.sub}>{(g.cs / g.minutes).toFixed(1)}/min · {g.vision} vision</span>
+                <span className={styles.sub}>{(g.cs / g.minutes).toFixed(1)}/min{g.vision !== null ? ` · ${g.vision} vision` : ''}</span>
               </div>
 
               <Items version={version} items={items} ids={g.items} size="md" />
@@ -245,7 +248,7 @@ export function MatchList({ client, puuid, games, onOpenPlayer, onOpenChampion, 
                     <Button variant="secondary" size="sm" onClick={() => load(g.gameId)}>Try again</Button>
                   </div>
                 )}
-                {detail?.status === 'ready' && <GameDetail {...shared} game={detail.game} puuid={puuid} onOpenPlayer={onOpenPlayer} />}
+                {detail?.status === 'ready' && <GameDetail {...shared} game={detail.game} puuid={puuid} region={region} onOpenPlayer={onOpenPlayer} />}
               </div>
             )}
           </li>

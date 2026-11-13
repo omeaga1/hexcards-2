@@ -120,7 +120,8 @@ export interface LcuParticipantStats {
   neutralMinionsKilled: number;
   goldEarned: number;
   totalDamageDealtToChampions: number;
-  visionScore: number;
+  /** Not every source has it (OP.GG doesn't). */
+  visionScore?: number;
   champLevel: number;
   item0: number; item1: number; item2: number; item3: number; item4: number; item5: number; item6: number;
   perk0: number;

@@ -44,7 +44,8 @@ export interface PlayerGame {
   cs: number;
   gold: number;
   damage: number;
-  vision: number;
+  /** Null when the source doesn't record it (OP.GG). */
+  vision: number | null;
   level: number;
   /** Slots 0 to 5, then the trinket. 0 is an empty slot. */
   items: number[];
@@ -95,7 +96,7 @@ export function playerGames(games: LcuGame[], puuid: string): PlayerGame[] {
         cs: s.totalMinionsKilled + s.neutralMinionsKilled,
         gold: s.goldEarned,
         damage: s.totalDamageDealtToChampions,
-        vision: s.visionScore,
+        vision: s.visionScore ?? null,
         level: s.champLevel,
         items: [s.item0, s.item1, s.item2, s.item3, s.item4, s.item5, s.item6],
         spells: [p.spell1Id, p.spell2Id],
@@ -121,8 +122,11 @@ export interface Totals {
   kda: number;
   csPerMin: number;
   damagePerMin: number;
+  /** Damage to champions per game. */
+  damage: number;
   goldPerMin: number;
-  visionPerMin: number;
+  /** Null when any game lacks a vision score. */
+  visionPerMin: number | null;
 }
 
 export function totals(games: PlayerGame[]): Totals {
@@ -142,8 +146,9 @@ export function totals(games: PlayerGame[]): Totals {
     kda: kdaRatio(k, d, a),
     csPerMin: sum((g) => g.cs) / minutes,
     damagePerMin: sum((g) => g.damage) / minutes,
+    damage: n ? sum((g) => g.damage) / n : 0,
     goldPerMin: sum((g) => g.gold) / minutes,
-    visionPerMin: sum((g) => g.vision) / minutes,
+    visionPerMin: games.every((g) => g.vision !== null) ? sum((g) => g.vision ?? 0) / minutes : null,
   };
 }
 

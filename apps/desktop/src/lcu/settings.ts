@@ -1,3 +1,4 @@
+import { OPGG_REGIONS, type Region } from '@hexcards/data';
 import type { PlayerRef } from './players';
 
 // Per-device conveniences. Everything still works if storage is unavailable.
@@ -47,6 +48,15 @@ export const settings = {
   /** Players you pinned on the Players page, in the order you pinned them. */
   pinnedPlayers: (): PlayerRef[] => readPlayers('hexcards.pinnedPlayers'),
   setPinnedPlayers: (players: PlayerRef[]) => write('hexcards.pinnedPlayers', JSON.stringify(players)),
+  /** You: your stats open first, with or without League running. */
+  me: (): PlayerRef | null => readPlayers('hexcards.me')[0] ?? null,
+  setMe: (player: PlayerRef) => write('hexcards.me', JSON.stringify([player])),
+  /** The region player searches use. */
+  region: (): Region | null => {
+    const r = read('hexcards.region');
+    return (OPGG_REGIONS as readonly string[]).includes(r ?? '') ? (r as Region) : null;
+  },
+  setRegion: (region: Region) => write('hexcards.region', region),
   /** Players you looked up, newest first. */
   recentPlayers: (): PlayerRef[] => readPlayers('hexcards.recentPlayers'),
   setRecentPlayers: (players: PlayerRef[]) => write('hexcards.recentPlayers', JSON.stringify(players)),
@@ -57,7 +67,12 @@ function readPlayers(key: string): PlayerRef[] {
     const list = JSON.parse(read(key) ?? '[]');
     return Array.isArray(list)
       ? list.filter((p): p is PlayerRef => typeof p?.puuid === 'string' && typeof p?.gameName === 'string' && typeof p?.tagLine === 'string')
-          .map((p) => ({ ...p, profileIconId: Number.isInteger(p.profileIconId) ? p.profileIconId : 29 }))
+          .map((p) => ({
+            ...p,
+            profileIconId: Number.isInteger(p.profileIconId) ? p.profileIconId : 29,
+            // Saved before regions existed (0.3.0): those came from the client, on your server.
+            region: (OPGG_REGIONS as readonly string[]).includes(p.region) ? p.region : (read('hexcards.region') as Region | null) ?? 'NA',
+          }))
       : [];
   } catch {
     return [];

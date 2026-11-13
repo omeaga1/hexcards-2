@@ -15,6 +15,7 @@ import { settings } from './lcu/settings';
 import { ChampionView } from './components/ChampionView';
 import { UpdateBanner } from './components/UpdateBanner';
 import { PlayersPage } from './components/PlayersPage';
+import { opggCall } from './lcu/opgg';
 import { lcuClient, useLeagueClient, type ChampSelectSession } from './lcu/useLeagueClient';
 import type { LcuClient } from '@hexcards/engine';
 import styles from './App.module.css';
@@ -51,7 +52,7 @@ type Page = 'champions' | 'players';
 export function App() {
   const client = useLeagueClient();
   const [page, setPage] = useState<Page>('champions');
-  // Player lookups go through the League client. Development: ?demo=players stands in a pretend one.
+  // Player lookups use the League client when it's open, OP.GG otherwise. Development: ?demo=players stands in a pretend client.
   const [demoPlayers, setDemoPlayers] = useState<LcuClient | null>(null);
   useEffect(() => {
     if (!import.meta.env.DEV || client.available) return;
@@ -348,7 +349,7 @@ export function App() {
       {page === 'players' && game.status === 'ready' && (
         <PlayersPage
           client={playersClient}
-          desktop={client.available}
+          opgg={client.available || import.meta.env.DEV ? opggCall : null}
           version={game.version}
           champions={game.champions}
           items={game.items}

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pin, PinOff, RotateCw, Lock } from 'lucide-react';
+import { Lock, Pin, PinOff, RotateCw, UserRound } from 'lucide-react';
 import {
   ROLE_LABELS, championIconUrl, profileIconUrl, rankEmblemUrl, roleIconUrl,
   type ChampionInfo, type ItemInfo, type LcuGame, type LcuRankedQueue, type LcuSummoner, type RuneData,
 } from '@hexcards/data';
 import {
   QUEUE_FILTER_LABELS, championForm, inQueue, playerGames, roleForm, streak, totals,
-  type LcuClient, type PlayerGame, type QueueFilter,
+  type PlayerGame, type QueueFilter,
 } from '@hexcards/engine';
 import { Badge } from './arc/badge/badge';
 import { Button } from './arc/button/button';
@@ -14,7 +14,7 @@ import { EmptyState } from './arc/empty-state/empty-state';
 import SegmentedControl from './arc/segmented-control/segmented-control';
 import { Skeleton } from './arc/skeleton/skeleton';
 import { MatchList } from './MatchList';
-import { HISTORY_PAGE, PlayerLookupError, matchHistory, rankedStats, summonerByPuuid, type PlayerRef, type Ranks } from '../lcu/players';
+import { HISTORY_PAGE, PlayerLookupError, toRef, type PlayerRef, type PlayerSource, type Ranks } from '../lcu/players';
 import styles from './PlayerProfile.module.css';
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
@@ -26,19 +26,22 @@ const TIER_NAMES: Record<string, string> = {
 /** Master and above have no divisions. */
 const rankName = (q: LcuRankedQueue) => `${TIER_NAMES[q.tier] ?? q.tier}${q.division && q.division !== 'NA' && !['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(q.tier) ? ` ${q.division}` : ''}`;
 
-/** How many games the page asks the client for on open: two pages, so a few remakes or ARAMs still leave a useful sample. */
+/** How many pages to ask for on open: two, so a few remakes or ARAMs still leave a useful sample (OP.GG has one). */
 const FIRST_LOAD = 2;
 /** Match history rows shown at first, and added per "show more". The stats above use every loaded game. */
 const ROWS = 10;
 
 interface PlayerProfileProps {
-  client: LcuClient;
+  /** Where this player's stats come from: the League client, or OP.GG when it isn't running. */
+  source: PlayerSource;
   player: PlayerRef;
   isYou: boolean;
   pinned: boolean;
   onTogglePin: (player: PlayerRef) => void;
-  /** The player's latest name and icon, once the client has said. */
-  onResolved: (player: LcuSummoner) => void;
+  /** Remembers this player as you, so your stats open first, with or without League. */
+  onSetMe: (player: PlayerRef) => void;
+  /** The player's latest name and icon, once the source has said. */
+  onResolved: (player: PlayerRef) => void;
   onOpenPlayer: (player: PlayerRef) => void;
   onOpenChampion: (championId: number) => void;
   version: string;
@@ -118,7 +121,7 @@ function Form({ games }: { games: PlayerGame[] }) {
 }
 
 export function PlayerProfile({
-  client, player, isYou, pinned, onTogglePin, onResolved, onOpenPlayer, onOpenChampion, version, champions, items, runes,
+  source, player, isYou, pinned, onTogglePin, onSetMe, onResolved, onOpenPlayer, onOpenChampion, version, champions, items, runes,
 }: PlayerProfileProps) {
   const [summoner, setSummoner] = useState<LcuSummoner | null>(null);
   const [ranks, setRanks] = useState<Ranks | null>(null);
@@ -132,40 +135,39 @@ export function PlayerProfile({
   useEffect(() => {
     let cancelled = false;
     setHistory((h) => (h.status === 'ready' && refresh > 0 ? h : { status: 'loading' }));
-    setMore({ loading: false, done: false });
+    if (refresh === 0) setRanks(null);
+    setMore({ loading: false, done: !source.paged });
     setBusy(true);
-    summonerByPuuid(client, player.puuid)
+    const fail = (err: Error) => {
+      if (cancelled) return;
+      setBusy(false);
+      setRanks((r) => r ?? { solo: null, flex: null });
+      setHistory({ status: 'error', message: err.message, private: err instanceof PlayerLookupError && err.message.includes('private') });
+    };
+    // First the player as this source knows them, then their rank and games.
+    source.resolve(player)
       .then((s) => {
         if (cancelled) return;
         setSummoner(s);
-        onResolved(s);
+        onResolved(toRef(s, player.region));
+        source.ranks(s).then((r) => !cancelled && setRanks(r)).catch(() => !cancelled && setRanks({ solo: null, flex: null }));
+        return Promise.all(Array.from({ length: source.paged ? FIRST_LOAD : 1 }, (_, i) => source.history(s, i * HISTORY_PAGE))).then((pages) => {
+          if (cancelled) return;
+          setBusy(false);
+          setHistory({ status: 'ready', value: dedupe(pages.flat()) });
+          if (!source.paged || pages[pages.length - 1]!.length < HISTORY_PAGE) setMore({ loading: false, done: true });
+        });
       })
-      .catch(() => {
-        // The name and icon we already have still show.
-      });
-    rankedStats(client, player.puuid).then((r) => !cancelled && setRanks(r)).catch(() => !cancelled && setRanks({ solo: null, flex: null }));
-    Promise.all(Array.from({ length: FIRST_LOAD }, (_, i) => matchHistory(client, player.puuid, i * HISTORY_PAGE)))
-      .then((pages) => {
-        if (cancelled) return;
-        setBusy(false);
-        const games = dedupe(pages.flat());
-        setHistory({ status: 'ready', value: games });
-        if (pages[pages.length - 1]!.length < HISTORY_PAGE) setMore({ loading: false, done: true });
-      })
-      .catch((err: Error) => {
-        if (cancelled) return;
-        setBusy(false);
-        setHistory({ status: 'error', message: err.message, private: err instanceof PlayerLookupError && err.message.includes('private') });
-      });
+      .catch(fail);
     return () => {
       cancelled = true;
     };
-  }, [client, player.puuid, refresh]);
+  }, [source, player.puuid, player.gameName, player.tagLine, player.region, refresh]);
 
   const loadMore = () => {
-    if (history.status !== 'ready') return;
+    if (history.status !== 'ready' || !summoner) return;
     setMore({ loading: true, done: false });
-    matchHistory(client, player.puuid, Math.ceil(history.value.length / HISTORY_PAGE) * HISTORY_PAGE)
+    source.history(summoner, Math.ceil(history.value.length / HISTORY_PAGE) * HISTORY_PAGE)
       .then((page) => {
         setHistory((h) => (h.status === 'ready' ? { status: 'ready', value: dedupe([...h.value, ...page]) } : h));
         setRows((n) => n + ROWS);
@@ -174,7 +176,8 @@ export function PlayerProfile({
       .catch((err: Error) => setMore({ loading: false, done: false, error: err.message }));
   };
 
-  const lines = useMemo(() => (history.status === 'ready' ? playerGames(history.value, player.puuid) : []), [history, player.puuid]);
+  const puuid = summoner?.puuid ?? player.puuid;
+  const lines = useMemo(() => (history.status === 'ready' ? playerGames(history.value, puuid) : []), [history, puuid]);
   const shown = useMemo(() => lines.filter((g) => inQueue(g.queueId, queue)), [lines, queue]);
   const t = useMemo(() => totals(shown), [shown]);
   const championRows = useMemo(() => championForm(shown).slice(0, 6), [shown]);
@@ -200,7 +203,7 @@ export function PlayerProfile({
             </h1>
             <div className={styles.badges}>
               {isYou && <Badge tone="info" size="sm">You</Badge>}
-              {level !== undefined && <span className={styles.meta}>Level {level}</span>}
+              <span className={styles.meta}>{level !== undefined ? `Level ${level} · ` : ''}{player.region}</span>
             </div>
           </div>
         </div>
@@ -208,6 +211,11 @@ export function PlayerProfile({
           <Button variant="ghost" size="sm" onClick={() => setRefresh((n) => n + 1)} loading={busy && refresh > 0}>
             <RotateCw size={16} aria-hidden /> Refresh
           </Button>
+          {!isYou && (
+            <Button variant="ghost" size="sm" onClick={() => onSetMe(summoner ? toRef(summoner, player.region) : player)}>
+              <UserRound size={16} aria-hidden /> This is me
+            </Button>
+          )}
           {!isYou && (
             <Button variant="secondary" size="sm" onClick={() => onTogglePin({ ...player, ...(summoner ? { gameName: summoner.gameName, tagLine: summoner.tagLine, profileIconId: summoner.profileIconId } : {}) })}>
               {pinned ? <PinOff size={16} aria-hidden /> : <Pin size={16} aria-hidden />}
@@ -235,7 +243,9 @@ export function PlayerProfile({
         <EmptyState
           icon={history.private ? <Lock size={24} /> : undefined}
           title={history.private ? 'Match history is private' : 'Couldn\'t load match history'}
-          description={history.private ? 'This player has hidden their games in the League client, so there are no stats to show.' : `${history.message} Check that League is still open, then try again.`}
+          description={history.private
+            ? 'This player has hidden their games in the League client, so there are no stats to show.'
+            : `${history.message} ${source.kind === 'client' ? 'Check that League is still open, then try again.' : 'Check the Riot ID and region, then try again.'}`}
           action={history.private ? undefined : <Button variant="secondary" onClick={() => setRefresh((n) => n + 1)}>Try again</Button>}
         />
       ) : (
@@ -246,8 +256,8 @@ export function PlayerProfile({
                 <h2 id="form-heading" className={styles.sectionTitle}>Recent form</h2>
                 <p className={styles.note}>
                   {loaded
-                    ? `${shown.length} Summoner's Rift ${shown.length === 1 ? 'game' : 'games'}${queue === 'all' ? '' : ` in ${QUEUE_FILTER_LABELS[queue]}`}${skipped > 0 ? `. ${skipped} ARAM, Arena or remade ${skipped === 1 ? 'game is' : 'games are'} left out.` : '.'}`
-                    : 'Reading match history from the League client'}
+                    ? `${shown.length} Summoner's Rift ${shown.length === 1 ? 'game' : 'games'}${queue === 'all' ? '' : ` in ${QUEUE_FILTER_LABELS[queue]}`} from ${source.label}.${skipped > 0 ? ` ${skipped} ARAM, Arena or remade ${skipped === 1 ? 'game is' : 'games are'} left out.` : ''}`
+                    : `Reading match history from ${source.label}`}
                 </p>
               </div>
               <SegmentedControl
@@ -274,7 +284,11 @@ export function PlayerProfile({
                   <Stat label="Win rate" value={pct(t.winRate)} context={`${t.wins}W ${t.losses}L`} />
                   <Stat label="KDA" value={t.kda.toFixed(2)} context={`${one(t.kills)} / ${one(t.deaths)} / ${one(t.assists)} per game`} />
                   <Stat label="CS per minute" value={one(t.csPerMin)} context={`${Math.round(t.goldPerMin)} gold per minute`} />
-                  <Stat label="Damage per minute" value={Math.round(t.damagePerMin).toLocaleString()} context={`${one(t.visionPerMin)} vision score per minute`} />
+                  <Stat
+                    label="Damage per minute"
+                    value={Math.round(t.damagePerMin).toLocaleString()}
+                    context={t.visionPerMin !== null ? `${one(t.visionPerMin)} vision score per minute` : `${Math.round(t.damage).toLocaleString()} to champions per game`}
+                  />
                 </div>
                 <Form games={shown} />
               </>
@@ -353,8 +367,9 @@ export function PlayerProfile({
             <section className={styles.section} aria-labelledby="history-heading">
               <h2 id="history-heading" className={styles.sectionTitle}>Match history</h2>
               <MatchList
-                client={client}
-                puuid={player.puuid}
+                loadGame={(gameId) => source.game(summoner!, gameId)}
+                puuid={puuid}
+                region={player.region}
                 games={shown.slice(0, rows)}
                 version={version}
                 champions={champions}
