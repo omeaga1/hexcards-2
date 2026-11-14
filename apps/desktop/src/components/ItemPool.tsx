@@ -25,7 +25,7 @@ interface ItemPoolProps {
   items: Map<number, ItemInfo>;
   /** Items on the core path the lane shows. */
   pathItems: Set<number>;
-  /** Team traits in this game (or toggled on). Items that answer one come first and light up. */
+  /** Team traits in this game (or toggled on). Items bought against one light up. */
   traits: Set<Trait>;
 }
 
@@ -44,8 +44,8 @@ export function ItemPool({ version, options, items, pathItems, traits }: ItemPoo
     const score = (o: ItemOption) => (sort === 'built' ? o.games : (o.winRateDelta * o.games) / (o.games + PRIOR_GAMES));
     return options
       .filter((o) => !filter || o.goodVs.includes(filter))
-      .sort((a, b) => Number(fits(b)) - Number(fits(a)) || score(b) - score(a));
-  }, [options, sort, filter, traits]);
+      .sort((a, b) => score(b) - score(a));
+  }, [options, sort, filter]);
   const shown = showAll ? listed : listed.slice(0, FIRST_SHOWN);
   const nameOf = (id: number) => items.get(id)?.name ?? `Item ${id}`;
 
@@ -102,7 +102,8 @@ export function ItemPool({ version, options, items, pathItems, traits }: ItemPoo
               <div className={styles.figures}>
                 <span className={styles.built}><strong>{percent(o.share)}</strong> built</span>
                 <span className={styles.win} data-tone={tone} title={`${winPercent(o.winRate)} win rate in ${o.games.toLocaleString()} games; ${points(o.winRateDelta)} points against games that finished an item at the same point`}>
-                  {winPercent(o.winRate)} win <span className={styles.delta}>{judged ? points(o.winRateDelta) : o.games < JUDGE_MIN_GAMES ? 'few games' : 'even'}</span>
+                  {winPercent(o.winRate)} win
+                  <span className={styles.delta}>{judged ? points(o.winRateDelta) : o.games < JUDGE_MIN_GAMES ? 'few games' : 'even'}</span>
                 </span>
               </div>
             </li>
