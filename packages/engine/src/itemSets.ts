@@ -5,6 +5,9 @@ const SUMMONERS_RIFT = 11;
 const CORE_SLOTS: Slot[] = ['core-1', 'core-2', 'core-3'];
 const LATE_SLOTS: Slot[] = ['late-4', 'late-5', 'late-6'];
 
+/** Items in the "Also built" block: two rows of the shop's item set panel. */
+const MAX_SITUATIONAL = 10;
+
 export const ITEM_SET_TITLE_PREFIX = 'HexCards: ';
 
 /**
@@ -52,6 +55,11 @@ export function buildItemSet(champion: ChampionBuilds, variant: BuildVariant, ac
   const defaultItem = (slot: Slot) => activeSwaps.find((s) => s.replacesSlot === slot)?.itemId ?? common(slot)[0]?.itemId;
   const inactiveSwaps = variant.swaps.filter((s) => !activeSwaps.includes(s));
 
+  const listed = new Set([...CORE_SLOTS, ...LATE_SLOTS].flatMap((slot) => common(slot).map((c) => c.itemId)));
+  for (const s of variant.swaps) listed.add(s.itemId);
+  // Other items this build's players buy, most built first, so they're a click away in the shop.
+  const situational = (variant.options ?? []).filter((o) => !listed.has(o.itemId)).slice(0, MAX_SITUATIONAL).map((o) => o.itemId);
+
   const blocks = [
     block('Start', common('start').map((c) => c.itemId)),
     block('First back', common('first-back').map((c) => c.itemId)),
@@ -61,6 +69,7 @@ export function buildItemSet(champion: ChampionBuilds, variant: BuildVariant, ac
     block('Late game', LATE_SLOTS.flatMap((slot) => common(slot).map((c) => c.itemId))),
     block('Core alternatives', CORE_SLOTS.flatMap((slot) => common(slot).slice(1).map((c) => c.itemId))),
     block('Other swaps', inactiveSwaps.map((s) => s.itemId)),
+    block('Also built', situational),
   ].filter((b): b is LcuItemSetBlock => b !== null);
 
   return {

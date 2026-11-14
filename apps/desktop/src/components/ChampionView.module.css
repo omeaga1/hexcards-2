@@ -241,3 +241,13 @@
   gap: var(--space-4);
   min-width: 0;
 }
+
+.subsection {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.subsectionTitle {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}

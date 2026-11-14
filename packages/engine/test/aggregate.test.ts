@@ -174,3 +174,25 @@ describe('distinctCorePath', () => {
     expect(distinctCorePath(slots)).toBe(slots);
   });
 });
+
+describe('withCorePath', () => {
+  const variant = (slots: [string, number[]][]) => ({
+    slots: slots.map(([slot, ids]) => ({ slot, common: ids.map((itemId, i) => ({ itemId, share: 0.5 - i * 0.1 })) })),
+    options: [{ itemId: 3142, games: 40, share: 0.08, winRate: 0.5, winRateDelta: 0, position: 2, avgMinute: 19, goodVs: [] }],
+  }) as never;
+
+  it('leads each core slot with the path, keeping the other items', async () => {
+    const { withCorePath, isCorePath } = await import('@hexcards/data');
+    const v = variant([['core-1', [3078, 6610]], ['core-2', [6610, 3053]], ['core-3', [3053, 3071]]]);
+    const path = { items: [3078, 3142, 3071], games: 40, share: 0.1, winRate: 0.6 };
+    const next = withCorePath(v, path);
+    const slot = (name: string) => next.slots.find((s) => s.slot === name)!.common;
+    expect(slot('core-1').map((c) => c.itemId)).toEqual([3078, 6610]);
+    // Youmuu's isn't listed in Core 2, so it's added with its share of the build's games.
+    expect(slot('core-2')[0]).toEqual({ itemId: 3142, share: 0.08, avgMinute: 19 });
+    expect(slot('core-2').map((c) => c.itemId)).toEqual([3142, 6610, 3053]);
+    expect(slot('core-3').map((c) => c.itemId)).toEqual([3071, 3053]);
+    expect(isCorePath(next, path)).toBe(true);
+    expect(isCorePath(v, path)).toBe(false);
+  });
+});

@@ -166,3 +166,27 @@ export const ChampionBuilds = z.object({
   variants: z.array(BuildVariant).min(1).max(3),
 });
 export type ChampionBuilds = z.infer<typeof ChampionBuilds>;
+
+/**
+ * The build with one of its full core paths in the Core 1 to 3 slots. Each path item leads its slot;
+ * an item players rarely buy in that exact slot is added there with its share of the build's games.
+ * Everything else, including the other items listed in each slot, stays as it was.
+ */
+export function withCorePath(variant: BuildVariant, path: BuildPath): BuildVariant {
+  const option = (id: number) => variant.options?.find((o) => o.itemId === id);
+  const slots = [...variant.slots];
+  CORE_PATH.forEach((slot, k) => {
+    const id = path.items[k]!;
+    const at = slots.findIndex((s) => s.slot === slot);
+    const common = at >= 0 ? slots[at]!.common : [];
+    const entry = common.find((c) => c.itemId === id) ?? ((o) => ({ itemId: id, share: o?.share ?? path.share, ...(o ? { avgMinute: o.avgMinute } : {}) }))(option(id));
+    const next = { slot, common: [entry, ...common.filter((c) => c.itemId !== id)] };
+    if (at >= 0) slots[at] = next;
+    else slots.push(next);
+  });
+  return { ...variant, slots };
+}
+
+/** Whether a path is the one the build's Core 1 to 3 slots already lead with. */
+export const isCorePath = (variant: BuildVariant, path: BuildPath) =>
+  CORE_PATH.every((slot, k) => variant.slots.find((s) => s.slot === slot)?.common[0]?.itemId === path.items[k]);

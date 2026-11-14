@@ -29,6 +29,13 @@ describe('buildItemSet', () => {
     expect(ids(set, 'Other swaps')).toEqual([3065]);
   });
 
+  it('adds the other items players build, without repeating any already in the set', () => {
+    const option = (itemId: number) => ({ itemId, games: 100, share: 0.1, winRate: 0.5, winRateDelta: 0, position: 4, avgMinute: 25, goodVs: [] });
+    const set = buildItemSet(jaxTop, { ...bruiser, options: [option(3078), option(3065), option(3748), option(6694)] });
+    expect(ids(set, 'Also built')).toEqual([3748, 6694]);
+    expect(ids(buildItemSet(jaxTop, bruiser), 'Also built')).toBeUndefined();
+  });
+
   it('writes item IDs as strings with no duplicates within a block', () => {
     const set = buildItemSet(jaxTop, bruiser);
     for (const block of set.blocks) {
