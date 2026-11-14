@@ -1,0 +1,154 @@
+.root {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Filter chips: one pressed at a time, "All" clears it. */
+.chip {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+@media (hover: hover) and (pointer: fine) {
+  .chip:hover { border-color: var(--border-strong); color: var(--foreground); }
+}
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-subtle); color: var(--foreground); }
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-2);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  transition: border-color var(--duration-standard) var(--ease-standard), background-color var(--duration-standard) var(--ease-standard);
+}
+/* Answers a trait in this game: the accent, like a lit swap. */
+.item[data-fits] { border-color: var(--accent); background: var(--accent-subtle); }
+@media (prefers-reduced-motion: reduce) {
+  .item, .chip { transition: none; }
+}
+
+.body {
+  display: grid;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+
+.nameRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+}
+
+.name {
+  color: var(--foreground);
+  font-size: var(--text-sm);
+}
+
+.tag {
+  font-size: var(--text-xs);
+  color: var(--accent-strong);
+}
+
+.meta {
+  text-wrap: balance;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: calc(var(--space-1) / 2);
+}
+
+.counter {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.counter[data-on] { background: var(--accent); color: var(--accent-foreground); }
+
+.figures {
+  display: grid;
+  justify-items: end;
+  gap: calc(var(--space-1) / 2);
+  font-variant-numeric: tabular-nums;
+}
+
+.built {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.built strong {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.win {
+  display: grid;
+  justify-items: end;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.delta { color: var(--text-muted); }
+.win[data-tone="up"] .delta { color: var(--success); }
+.win[data-tone="down"] .delta { color: var(--danger); }
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.note {
+  margin: 0;
+  max-width: 44rem;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}

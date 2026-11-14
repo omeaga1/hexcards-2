@@ -1,4 +1,4 @@
-import { distinctCorePath, type BuildVariant, type GamePlayer, type PerkStyle, type RunePage, type Slot, type Swap, type Trait } from '@hexcards/data';
+import { distinctCorePath, type BuildPath, type BuildVariant, type ItemOption, type GamePlayer, type PerkStyle, type RunePage, type Slot, type Swap, type Trait } from '@hexcards/data';
 import { validateRunePage } from '../runes';
 import { validateSkillOrder } from '../skills';
 import { chooseClusters, type Vector } from './cluster';
@@ -13,6 +13,8 @@ const MIN_ITEM_SHARE = 0.05;
 const MAX_COMMON = 4;
 /** Games need this many finished items to say anything about the build. */
 const MIN_LEGENDARIES = 2;
+
+const round3 = (x: number) => Math.round(x * 1000) / 1000;
 
 const CORE_SLOTS: Slot[] = ['core-1', 'core-2', 'core-3', 'late-4', 'late-5', 'late-6'];
 const FLASH = 4;
@@ -76,14 +78,25 @@ function mode<T>(values: T[], key: (v: T) => string = String): T | undefined {
   return [...counts.values()].sort((a, b) => b.n - a.n)[0]?.value;
 }
 
-/** Items in a slot with their share of the games that filled the slot. */
-function common(perGame: (number | undefined)[], total: number, minutes?: Map<number, number[]>) {
-  const counts = new Map<number, number>();
-  for (const id of perGame) if (id !== undefined) counts.set(id, (counts.get(id) ?? 0) + 1);
+/** Items in a slot with their share of the games that filled the slot, and how often those games were won. */
+function common(perGame: ({ id: number; win: boolean } | undefined)[], total: number, minutes?: Map<number, number[]>) {
+  const counts = new Map<number, { n: number; wins: number }>();
+  for (const g of perGame) {
+    if (!g) continue;
+    const c = counts.get(g.id) ?? counts.set(g.id, { n: 0, wins: 0 }).get(g.id)!;
+    c.n++;
+    if (g.win) c.wins++;
+  }
   return [...counts]
-    .map(([itemId, n]) => {
+    .map(([itemId, { n, wins }]) => {
       const m = minutes?.get(itemId);
-      return { itemId, share: n / total, ...(m?.length ? { avgMinute: Math.round((m.reduce((a, b) => a + b, 0) / m.length) * 10) / 10 } : {}) };
+      return {
+        itemId,
+        share: n / total,
+        ...(m?.length ? { avgMinute: Math.round((m.reduce((a, b) => a + b, 0) / m.length) * 10) / 10 } : {}),
+        games: n,
+        winRate: round3(wins / n),
+      };
     })
     .filter((c) => c.share >= MIN_ITEM_SHARE)
     .sort((a, b) => b.share - a.share)
@@ -241,8 +254,6 @@ export function swapCandidates(games: BuildGame[], items: ItemCatalog): SwapCand
   return found;
 }
 
-const round3 = (x: number) => Math.round(x * 1000) / 1000;
-
 /**
  * The swaps one build's players make: candidates (by default found on these same games) that this
  * build's own players buy against the trait, placed in the slot they usually take, with when to buy them.
@@ -306,6 +317,104 @@ export function traitStatsOf(games: BuildGame[]): NonNullable<BuildVariant['trai
     if (on.length > 0) stats[trait] = [on.length, on.filter((g) => g.win).length];
   }
   return stats;
+}
+
+/** A path needs this many games, and this share of the build's three-item games, to be listed. */
+const PATH_MIN_GAMES = 10;
+const PATH_MIN_SHARE = 0.02;
+const MAX_PATHS = 6;
+
+/**
+ * The full core paths players take: games grouped by their first three finished items in any order,
+ * each shown in the order those players most often bought them. Most played first.
+ */
+export function corePaths(games: BuildGame[]): BuildPath[] {
+  const three = games.filter((g) => g.legendaries.length >= 3);
+  const groups = new Map<string, BuildGame[]>();
+  for (const g of three) {
+    const key = g.legendaries.slice(0, 3).map((l) => l.id).sort((a, b) => a - b).join(',');
+    (groups.get(key) ?? groups.set(key, []).get(key)!).push(g);
+  }
+  return [...groups.values()]
+    .filter((gs) => gs.length >= PATH_MIN_GAMES && gs.length / three.length >= PATH_MIN_SHARE)
+    .sort((a, b) => b.length - a.length || a[0]!.legendaries[0]!.id - b[0]!.legendaries[0]!.id)
+    .slice(0, MAX_PATHS)
+    .map((gs) => ({
+      items: mode(gs.map((g) => g.legendaries.slice(0, 3).map((l) => l.id)), (ids) => ids.join(','))!,
+      games: gs.length,
+      share: round3(gs.length / three.length),
+      winRate: round3(winRate(gs)),
+    }));
+}
+
+/** An item needs this many buyers, and this share of the build's games, to be listed with its record. */
+const OPTION_MIN_GAMES = 10;
+const OPTION_MIN_SHARE = 0.005;
+const MAX_OPTIONS = 30;
+/** "Good vs" needs this many games on each side of the trait, this many buyers facing it, and a buy rate this many times higher. */
+const GOOD_VS_MIN_SIDE = 30;
+const GOOD_VS_MIN_BUYERS = 10;
+const GOOD_VS_MIN_RATIO = 1.25;
+
+/**
+ * Every finished item the build's players buy often enough to judge, with its record. Its win rate is
+ * set against games that finished an item at the same point (a 5th item against all 5-item games),
+ * so late, long-game items aren't marked down for the length of the games they appear in.
+ */
+export function itemOptions(games: BuildGame[], items: ItemCatalog, candidates: SwapCandidate[] = []): ItemOption[] {
+  const SIX = 6;
+  // Win rate of games that finished at least k + 1 items.
+  const atPosition = Array.from({ length: SIX }, (_, k) => {
+    const reached = games.filter((g) => g.legendaries.length > k);
+    return reached.length ? winRate(reached) : 0;
+  });
+  const bought = new Map<number, { games: number; wins: number; expected: number; minutes: number[]; positions: number[] }>();
+  for (const g of games) {
+    g.legendaries.slice(0, SIX).forEach((l, k) => {
+      const b = bought.get(l.id) ?? bought.set(l.id, { games: 0, wins: 0, expected: 0, minutes: [], positions: [] }).get(l.id)!;
+      b.games++;
+      if (g.win) b.wins++;
+      b.expected += atPosition[k]!;
+      b.minutes.push(l.minute);
+      b.positions.push(k + 1);
+    });
+  }
+  // What it's bought against: traits it answers by Riot's item text that its players face more
+  // often than the build's players overall (it's bought more when the trait is there).
+  const known = games.filter((g) => g.traits);
+  const goodVs = (itemId: number) => {
+    const swapLift = new Map(candidates.filter((c) => c.itemId === itemId).map((c) => [c.trigger, c.rateOn - c.rateOff]));
+    const lifts: [Trait, number][] = [];
+    for (const trait of new Set([...swapLift.keys(), ...items.counters(itemId)])) {
+      if (swapLift.has(trait)) {
+        lifts.push([trait, swapLift.get(trait)! + 1]);
+        continue;
+      }
+      const on = known.filter((g) => g.traits!.has(trait));
+      const off = known.filter((g) => !g.traits!.has(trait));
+      if (on.length < GOOD_VS_MIN_SIDE || off.length < GOOD_VS_MIN_SIDE) continue;
+      const has = (g: BuildGame) => g.legendaries.slice(0, SIX).some((l) => l.id === itemId);
+      const boughtOn = on.filter(has).length;
+      const rateOn = boughtOn / on.length;
+      const rateOff = off.filter(has).length / off.length;
+      if (boughtOn >= GOOD_VS_MIN_BUYERS && rateOn >= rateOff * GOOD_VS_MIN_RATIO) lifts.push([trait, rateOn - rateOff]);
+    }
+    return lifts.sort((a, b) => b[1] - a[1]).map(([t]) => t);
+  };
+  return [...bought]
+    .filter(([, b]) => b.games >= OPTION_MIN_GAMES && b.games / games.length >= OPTION_MIN_SHARE)
+    .sort(([ia, a], [ib, b]) => b.games - a.games || ia - ib)
+    .slice(0, MAX_OPTIONS)
+    .map(([itemId, b]) => ({
+      itemId,
+      games: b.games,
+      share: round3(b.games / games.length),
+      winRate: round3(b.wins / b.games),
+      winRateDelta: round3((b.wins - b.expected) / b.games),
+      position: mode(b.positions)!,
+      avgMinute: Math.round((b.minutes.reduce((s, m) => s + m, 0) / b.minutes.length) * 10) / 10,
+      goodVs: goodVs(itemId),
+    }));
 }
 
 /** Share of games that finished each item among their first three. */
@@ -374,12 +483,12 @@ export function buildVariants(games: BuildGame[], ctx: VariantContext): BuildVar
     if (firstBack.length) counted.push({ slot: 'first-back', common: firstBack });
     CORE_SLOTS.forEach((slot, k) => {
       const filled = members.filter((g) => g.legendaries[k]);
-      const items = common(filled.map((g) => g.legendaries[k]!.id), filled.length, minutes);
+      const items = common(filled.map((g) => ({ id: g.legendaries[k]!.id, win: g.win })), filled.length, minutes);
       if (items.length && filled.length >= Math.max(10, members.length * 0.15)) counted.push({ slot, common: items });
     });
     const bootMinutes = new Map<number, number[]>();
     for (const g of members) if (g.boots) (bootMinutes.get(g.boots.id) ?? bootMinutes.set(g.boots.id, []).get(g.boots.id)!).push(g.boots.minute);
-    const boots = common(members.map((g) => g.boots?.id), members.length, bootMinutes);
+    const boots = common(members.map((g) => (g.boots ? { id: g.boots.id, win: g.win } : undefined)), members.length, bootMinutes);
     if (boots.length) counted.push({ slot: 'boots', common: boots });
     const slots = distinctCorePath(counted);
 
@@ -393,6 +502,8 @@ export function buildVariants(games: BuildGame[], ctx: VariantContext): BuildVar
       skillOrder,
       slots,
       swaps: findSwaps(members, slots, ctx.items, ctx.swapCandidates),
+      paths: corePaths(members),
+      options: itemOptions(members, ctx.items, ctx.swapCandidates ?? swapCandidates(members, ctx.items)),
       traitStats: traitStatsOf(members),
       stats: {
         games: members.length,

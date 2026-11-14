@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { distinctCorePath, type GamePlayer } from '@hexcards/data';
 import {
-  ItemCatalog, buildVariants, chooseClusters, cosineDistance, labelFor, skillOrderOf, toBuildGame, validateSkillOrder,
+  ItemCatalog, buildVariants, chooseClusters, corePaths, itemOptions, cosineDistance, labelFor, skillOrderOf, toBuildGame, validateSkillOrder,
   type BuildGame, type DDragonItem, PROFILE_TAGS,
 } from '../src';
 import { styles } from './fixtures';
@@ -23,7 +23,7 @@ const items = new ItemCatalog({
   4645: item('Shadowflame', 3200, ['SpellDamage', 'MagicPenetration']),
   3157: item("Zhonya's Hourglass", 3250, ['SpellDamage', 'Armor']),
   3142: item("Youmuu's Ghostblade", 2800, ['Damage', 'ArmorPenetration'], { description: '<stats>55 Attack Damage<br>18 Lethality</stats>' }),
-  3071: item('Black Cleaver', 3000, ['Health', 'Damage', 'ArmorPenetration']),
+  3071: item('Black Cleaver', 3000, ['Health', 'Damage', 'ArmorPenetration'], { description: 'Physical damage reduces the target\'s Armor by 6%' }),
   3047: item('Plated Steelcaps', 1200, ['Armor', 'Boots'], { depth: 2 }),
   1001: item('Boots', 300, ['Boots'], { into: ['3047'], depth: 1 }),
 });
@@ -126,6 +126,53 @@ describe('buildVariants', () => {
   });
 });
 
+describe('corePaths', () => {
+  it('groups games by their first three items, in the order most players bought them', () => {
+    const games = [
+      ...Array.from({ length: 30 }, (_, i) => toBuildGame(player([3078, 6610, 3053], i < 20 ? 1 : 0), items)),
+      ...Array.from({ length: 6 }, () => toBuildGame(player([6610, 3078, 3053], 0), items)),
+      ...Array.from({ length: 12 }, () => toBuildGame(player([3078, 3071, 3053], 1), items)),
+      // Too few games to list.
+      ...Array.from({ length: 4 }, () => toBuildGame(player([3078, 3142, 3053], 1), items)),
+    ];
+    const paths = corePaths(games);
+    expect(paths.map((p) => p.items)).toEqual([[3078, 6610, 3053], [3078, 3071, 3053]]);
+    expect(paths[0]).toMatchObject({ games: 36, winRate: 0.556 });
+    expect(paths[0]!.share).toBeCloseTo(36 / 52, 2);
+    expect(paths[1]).toMatchObject({ games: 12, winRate: 1 });
+  });
+});
+
+describe('itemOptions', () => {
+  it('lists every item bought often enough, judged against games of the same length', () => {
+    const games = [
+      // Black Cleaver as a 4th item wins 15 of 20; 4-item games overall win 25 of 40.
+      ...Array.from({ length: 20 }, (_, i) => toBuildGame(player([3078, 6610, 3053, 3071], i < 15 ? 1 : 0), items)),
+      ...Array.from({ length: 20 }, (_, i) => toBuildGame(player([3078, 6610, 3053, 3142], i < 10 ? 1 : 0), items)),
+      ...Array.from({ length: 20 }, (_, i) => toBuildGame(player([3078, 6610, 3053], i < 10 ? 1 : 0), items)),
+    ];
+    const candidates = [{ itemId: 3071, trigger: 'enemy-tanks-2plus' as const, rateOn: 0.5, rateOff: 0.2, buyers: 20, winRateDelta: 0.05 }];
+    const options = itemOptions(games, items, candidates);
+    expect(options.map((o) => o.itemId)).toEqual([3053, 3078, 6610, 3071, 3142]);
+    const cleaver = options.find((o) => o.itemId === 3071)!;
+    expect(cleaver).toMatchObject({ games: 20, share: 0.333, winRate: 0.75, position: 4, goodVs: ['enemy-tanks-2plus'] });
+    expect(cleaver.winRateDelta).toBeCloseTo(0.75 - 25 / 40, 3);
+    expect(options.find((o) => o.itemId === 3142)!.winRateDelta).toBeCloseTo(0.5 - 25 / 40, 3);
+  });
+
+  it("says what an item is bought against when it answers the trait and is bought more facing it", () => {
+    const tanks = new Set(['enemy-tanks-2plus' as const]);
+    const games = [
+      ...Array.from({ length: 40 }, (_, i) => toBuildGame(player([3078, 6610, i < 30 ? 3071 : 3053], 1), items, tanks)),
+      ...Array.from({ length: 40 }, (_, i) => toBuildGame(player([3078, 6610, i < 8 ? 3071 : 3053], 1), items, new Set())),
+    ];
+    const option = (id: number) => itemOptions(games, items).find((o) => o.itemId === id)!;
+    expect(option(3071).goodVs).toEqual(['enemy-tanks-2plus']);
+    // Sterak's is bought less against tanks, and doesn't answer them by its text anyway.
+    expect(option(3053).goodVs).toEqual([]);
+  });
+});
+
 describe('distinctCorePath', () => {
   const slot = (name: 'start' | 'core-1' | 'core-2' | 'core-3', ...ids: number[]) => ({ slot: name, common: ids.map((itemId) => ({ itemId, share: 0.3 })) });
 
@@ -137,5 +184,27 @@ describe('distinctCorePath', () => {
   it('leaves a path that is already distinct untouched', () => {
     const slots = [slot('core-1', 3089), slot('core-2', 4645), slot('core-3', 3157)];
     expect(distinctCorePath(slots)).toBe(slots);
+  });
+});
+
+describe('withCorePath', () => {
+  const variant = (slots: [string, number[]][]) => ({
+    slots: slots.map(([slot, ids]) => ({ slot, common: ids.map((itemId, i) => ({ itemId, share: 0.5 - i * 0.1 })) })),
+    options: [{ itemId: 3142, games: 40, share: 0.08, winRate: 0.5, winRateDelta: 0, position: 2, avgMinute: 19, goodVs: [] }],
+  }) as never;
+
+  it('leads each core slot with the path, keeping the other items', async () => {
+    const { withCorePath, isCorePath } = await import('@hexcards/data');
+    const v = variant([['core-1', [3078, 6610]], ['core-2', [6610, 3053]], ['core-3', [3053, 3071]]]);
+    const path = { items: [3078, 3142, 3071], games: 40, share: 0.1, winRate: 0.6 };
+    const next = withCorePath(v, path);
+    const slot = (name: string) => next.slots.find((s) => s.slot === name)!.common;
+    expect(slot('core-1').map((c) => c.itemId)).toEqual([3078, 6610]);
+    // Youmuu's isn't listed in Core 2, so it's added with its share of the build's games.
+    expect(slot('core-2')[0]).toEqual({ itemId: 3142, share: 0.08, avgMinute: 19 });
+    expect(slot('core-2').map((c) => c.itemId)).toEqual([3142, 6610, 3053]);
+    expect(slot('core-3').map((c) => c.itemId)).toEqual([3071, 3053]);
+    expect(isCorePath(next, path)).toBe(true);
+    expect(isCorePath(v, path)).toBe(false);
   });
 });

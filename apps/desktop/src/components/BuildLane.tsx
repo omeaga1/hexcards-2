@@ -24,6 +24,11 @@ const BOUGHT_TOGETHER: Slot[] = ['start', 'first-back'];
 const MAX_ALTERNATIVES = 3;
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
+/** Hover lines for an item in a slot: how often it's built there and, in newer files, how it does. */
+const slotDetails = (c: { share: number; games?: number; winRate?: number }) => [
+  `Built in ${percent(c.share)} of games`,
+  ...(c.winRate !== undefined && c.games ? [`${(c.winRate * 100).toFixed(1)}% win rate in ${c.games.toLocaleString()} games`] : []),
+];
 const signedPercent = (delta: number) => `${delta >= 0 ? '+' : ''}${(delta * 100).toFixed(1)}%`;
 const BOOTS: Stage = { label: 'Boots', slots: ['boots'] };
 const stageOf = (slot: Slot) => [...STAGES, BOOTS].find((s) => s.slots.includes(slot))!;
@@ -113,7 +118,7 @@ export function BuildLane({ version, variant, items, activeSwaps }: BuildLanePro
                   {/* The slot is a two-sided card: the usual item on the front, the swap on the back. It flips when the swap lights up. */}
                   <div className={styles.flip} data-flipped={lit ? '' : undefined}>
                     <div className={styles.face} aria-hidden={!!lit}>
-                      <ItemIcon version={version} itemId={main!.itemId} item={items.get(main!.itemId)} size="lg" details={[`Built in ${percent(main!.share)} of games`]} />
+                      <ItemIcon version={version} itemId={main!.itemId} item={items.get(main!.itemId)} size="lg" details={slotDetails(main!)} />
                     </div>
                     {flipTo && (
                       <div className={`${styles.face} ${styles.back}`} aria-hidden={!lit}>
@@ -151,7 +156,7 @@ export function BuildLane({ version, variant, items, activeSwaps }: BuildLanePro
                   <div className={styles.altRow}>
                     {alternatives.map((c) => (
                       <div key={c.itemId} className={styles.alt}>
-                        <ItemIcon version={version} itemId={c.itemId} item={items.get(c.itemId)} size="md" details={[`Built in ${percent(c.share)} of games`]} />
+                        <ItemIcon version={version} itemId={c.itemId} item={items.get(c.itemId)} size="md" details={slotDetails(c)} />
                         <span className={styles.share}>{percent(c.share)}</span>
                       </div>
                     ))}

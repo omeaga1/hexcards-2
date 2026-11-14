@@ -4,7 +4,7 @@ import { Button } from './arc/button/button';
 import { Skeleton } from './arc/skeleton/skeleton';
 import { Switch } from './arc/switch/switch';
 import {
-  BRACKET_LABELS, ROLE_LABELS, SUMMONER_SPELLS as SPELLS, TRAIT_LABELS, Trait as TraitSchema, championIconUrl, championSplashUrl, loadAbilities, loadChampionBuilds, summonerSpellIconUrl as spellIconUrl, traitClause,
+  BRACKET_LABELS, ROLE_LABELS, SUMMONER_SPELLS as SPELLS, TRAIT_LABELS, Trait as TraitSchema, championIconUrl, championSplashUrl, isCorePath, loadAbilities, withCorePath, loadChampionBuilds, summonerSpellIconUrl as spellIconUrl, traitClause,
   type AbilityInfo, type Bracket, type BuildVariant, type ChampionBuilds, type ChampionInfo, type ItemInfo, type PickTable, type Role, type RoleTable,
   type RuneData, type Trait,
 } from '@hexcards/data';
@@ -12,6 +12,8 @@ import { MIN_EDGE, buildChangingTraits, laneOpponent, matchupTraits, recommendBu
 import { roleTierList } from '../tiers';
 import { BuildDeck } from './BuildDeck';
 import { BuildLane } from './BuildLane';
+import { BuildPaths } from './BuildPaths';
+import { ItemPool } from './ItemPool';
 import { ImportPanel } from './ImportPanel';
 import { RolePills } from './RolePills';
 import { RunePage, RunePageSkeleton, RunePageUnavailable } from './RunePage';
@@ -245,8 +247,21 @@ function Builds({ version, items, runes, runesFailed, onRetryRunes, abilities, b
   useEffect(() => {
     if (matchup) setTraits(matchupTraits(matchup.traits, matchup.allies, matchup.enemies));
   }, [allyKey, enemyKey, matchup?.traits]);
-  const variant = builds.variants.find((v) => v.id === variantId) ?? builds.variants[0]!;
+  const built = builds.variants.find((v) => v.id === variantId) ?? builds.variants[0]!;
+  // Which full core path the lane shows. Until you pick one, the path that matches each slot's most
+  // built item, if any players actually take it; picking another build starts over.
+  const paths = built.paths ?? [];
+  const usualPath = paths.findIndex((p) => isCorePath(built, p));
+  const [pickedPath, setPickedPath] = useState<{ variantId: string; index: number | null } | null>(null);
+  const pathIndex = pickedPath?.variantId === built.id ? pickedPath.index : usualPath >= 0 ? usualPath : null;
+  const variant = useMemo(() => (pathIndex === null ? built : withCorePath(built, paths[pathIndex]!)), [built, pathIndex]);
   const activeSwaps = useMemo(() => variant.swaps.filter((s) => traits.has(s.trigger)), [variant, traits]);
+  const pathItems = useMemo(
+    () => new Set((['core-1', 'core-2', 'core-3'] as const).flatMap((slot) => variant.slots.find((s) => s.slot === slot)?.common[0]?.itemId ?? [])),
+    [variant],
+  );
+  // The import sends every build's item set; the one on screen goes with the path you picked.
+  const importing = useMemo(() => ({ ...builds, variants: builds.variants.map((v) => (v.id === variant.id ? variant : v)) }), [builds, variant]);
 
   // Which build fits these teams. The card shown follows it until you pick one yourself: in champ
   // select always, and otherwise when a toggle is what moves it (not just a better overall record).
@@ -296,7 +311,7 @@ function Builds({ version, items, runes, runesFailed, onRetryRunes, abilities, b
             recommendedId={recommendation?.id}
             onValueChange={pickCard}
           />
-          <ImportPanel champion={builds} variant={variant} activeSwaps={activeSwaps} connected={connected} inChampSelect={inChampSelect} />
+          <ImportPanel champion={importing} variant={variant} activeSwaps={activeSwaps} connected={connected} inChampSelect={inChampSelect} />
         </div>
       </section>
 
@@ -336,8 +351,35 @@ function Builds({ version, items, runes, runesFailed, onRetryRunes, abilities, b
           ))}
         </fieldset>}
 
+        {paths.length > 1 && (
+          <div className={styles.subsection}>
+            <div className={styles.sectionHead}>
+              <h3 className={styles.subsectionTitle}>Core paths</h3>
+              <p className={styles.note}>The {paths.length} most played first three items. Pick one to see it below and import it.</p>
+            </div>
+            <BuildPaths
+              version={version}
+              paths={paths}
+              items={items}
+              value={pathIndex}
+              offerUsual={usualPath < 0}
+              onValueChange={(index) => setPickedPath({ variantId: built.id, index })}
+            />
+          </div>
+        )}
+
         <BuildLane version={version} variant={variant} items={items} activeSwaps={activeSwaps} />
       </section>
+
+      {built.options && built.options.length > 0 && (
+        <section className={styles.section} aria-labelledby="pool-heading">
+          <div className={styles.sectionHead}>
+            <h2 id="pool-heading" className={styles.sectionTitle}>Every item players build</h2>
+            <p className={styles.note}>{built.options.length} items bought in this build's games, with how they do.</p>
+          </div>
+          <ItemPool version={version} options={built.options} items={items} pathItems={pathItems} traits={traits} />
+        </section>
+      )}
     </>
   );
 }

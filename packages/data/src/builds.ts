@@ -53,7 +53,42 @@ export const CommonItem = z.object({
   share: z.number().min(0).max(1),
   /** Average game minute the item was completed. */
   avgMinute: z.number().optional(),
+  /** Games that bought it in this slot, and the share of them won. Missing in older files. */
+  games: z.number().int().optional(),
+  winRate: z.number().min(0).max(1).optional(),
 });
+
+/** One full core path: the first three finished items, in the order players most often buy them. */
+export const BuildPath = z.object({
+  items: z.array(z.number().int()).length(3),
+  /** Games whose first three items were these three, in any order. */
+  games: z.number().int(),
+  /** Share of the build's games with three finished items that took this path, 0–1. */
+  share: z.number().min(0).max(1),
+  winRate: z.number().min(0).max(1),
+});
+export type BuildPath = z.infer<typeof BuildPath>;
+
+/** A finished item this build's players buy at some point, with how it does when they do. */
+export const ItemOption = z.object({
+  itemId: z.number().int(),
+  /** Games that bought it among their first six finished items. */
+  games: z.number().int(),
+  /** Share of the build's games that bought it, 0–1. */
+  share: z.number().min(0).max(1),
+  winRate: z.number().min(0).max(1),
+  /**
+   * Win rate when bought, minus the usual win rate of games that finished an item at the same point.
+   * Comparing against games of the same length keeps late items from looking bad just for being late.
+   */
+  winRateDelta: z.number(),
+  /** Which finished item it usually is, 1–6. */
+  position: z.number().int().min(1).max(6),
+  avgMinute: z.number(),
+  /** Team traits players buy it noticeably more against (and that it answers by Riot's item text). */
+  goodVs: z.array(Trait).default([]),
+});
+export type ItemOption = z.infer<typeof ItemOption>;
 
 export const Swap = z.object({
   replacesSlot: Slot,
@@ -93,6 +128,10 @@ export const BuildVariant = z.object({
     pickShare: z.number().min(0).max(1),
     winRate: z.number().min(0).max(1),
   }),
+  /** The most taken full core paths, most played first. Missing in older files. */
+  paths: z.array(BuildPath).optional(),
+  /** Every finished item the build's players buy often enough to judge, most built first. Missing in older files. */
+  options: z.array(ItemOption).optional(),
   /** [games, wins] among this build's games where each team trait was present. Missing in older files. */
   traitStats: z.partialRecord(Trait, z.tuple([z.number().int(), z.number().int()])).optional(),
 });
@@ -127,3 +166,27 @@ export const ChampionBuilds = z.object({
   variants: z.array(BuildVariant).min(1).max(3),
 });
 export type ChampionBuilds = z.infer<typeof ChampionBuilds>;
+
+/**
+ * The build with one of its full core paths in the Core 1 to 3 slots. Each path item leads its slot;
+ * an item players rarely buy in that exact slot is added there with its share of the build's games.
+ * Everything else, including the other items listed in each slot, stays as it was.
+ */
+export function withCorePath(variant: BuildVariant, path: BuildPath): BuildVariant {
+  const option = (id: number) => variant.options?.find((o) => o.itemId === id);
+  const slots = [...variant.slots];
+  CORE_PATH.forEach((slot, k) => {
+    const id = path.items[k]!;
+    const at = slots.findIndex((s) => s.slot === slot);
+    const common = at >= 0 ? slots[at]!.common : [];
+    const entry = common.find((c) => c.itemId === id) ?? ((o) => ({ itemId: id, share: o?.share ?? path.share, ...(o ? { avgMinute: o.avgMinute } : {}) }))(option(id));
+    const next = { slot, common: [entry, ...common.filter((c) => c.itemId !== id)] };
+    if (at >= 0) slots[at] = next;
+    else slots.push(next);
+  });
+  return { ...variant, slots };
+}
+
+/** Whether a path is the one the build's Core 1 to 3 slots already lead with. */
+export const isCorePath = (variant: BuildVariant, path: BuildPath) =>
+  CORE_PATH.every((slot, k) => variant.slots.find((s) => s.slot === slot)?.common[0]?.itemId === path.items[k]);
