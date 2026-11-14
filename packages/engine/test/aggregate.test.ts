@@ -23,7 +23,7 @@ const items = new ItemCatalog({
   4645: item('Shadowflame', 3200, ['SpellDamage', 'MagicPenetration']),
   3157: item("Zhonya's Hourglass", 3250, ['SpellDamage', 'Armor']),
   3142: item("Youmuu's Ghostblade", 2800, ['Damage', 'ArmorPenetration'], { description: '<stats>55 Attack Damage<br>18 Lethality</stats>' }),
-  3071: item('Black Cleaver', 3000, ['Health', 'Damage', 'ArmorPenetration']),
+  3071: item('Black Cleaver', 3000, ['Health', 'Damage', 'ArmorPenetration'], { description: 'Physical damage reduces the target\'s Armor by 6%' }),
   3047: item('Plated Steelcaps', 1200, ['Armor', 'Boots'], { depth: 2 }),
   1001: item('Boots', 300, ['Boots'], { into: ['3047'], depth: 1 }),
 });
@@ -152,12 +152,24 @@ describe('itemOptions', () => {
       ...Array.from({ length: 20 }, (_, i) => toBuildGame(player([3078, 6610, 3053], i < 10 ? 1 : 0), items)),
     ];
     const candidates = [{ itemId: 3071, trigger: 'enemy-tanks-2plus' as const, rateOn: 0.5, rateOff: 0.2, buyers: 20, winRateDelta: 0.05 }];
-    const options = itemOptions(games, candidates);
+    const options = itemOptions(games, items, candidates);
     expect(options.map((o) => o.itemId)).toEqual([3053, 3078, 6610, 3071, 3142]);
     const cleaver = options.find((o) => o.itemId === 3071)!;
     expect(cleaver).toMatchObject({ games: 20, share: 0.333, winRate: 0.75, position: 4, goodVs: ['enemy-tanks-2plus'] });
     expect(cleaver.winRateDelta).toBeCloseTo(0.75 - 25 / 40, 3);
     expect(options.find((o) => o.itemId === 3142)!.winRateDelta).toBeCloseTo(0.5 - 25 / 40, 3);
+  });
+
+  it("says what an item is bought against when it answers the trait and is bought more facing it", () => {
+    const tanks = new Set(['enemy-tanks-2plus' as const]);
+    const games = [
+      ...Array.from({ length: 40 }, (_, i) => toBuildGame(player([3078, 6610, i < 30 ? 3071 : 3053], 1), items, tanks)),
+      ...Array.from({ length: 40 }, (_, i) => toBuildGame(player([3078, 6610, i < 8 ? 3071 : 3053], 1), items, new Set())),
+    ];
+    const option = (id: number) => itemOptions(games, items).find((o) => o.itemId === id)!;
+    expect(option(3071).goodVs).toEqual(['enemy-tanks-2plus']);
+    // Sterak's is bought less against tanks, and doesn't answer them by its text anyway.
+    expect(option(3053).goodVs).toEqual([]);
   });
 });
 

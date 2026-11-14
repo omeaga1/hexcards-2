@@ -349,15 +349,19 @@ export function corePaths(games: BuildGame[]): BuildPath[] {
 
 /** An item needs this many buyers, and this share of the build's games, to be listed with its record. */
 const OPTION_MIN_GAMES = 10;
-const OPTION_MIN_SHARE = 0.015;
+const OPTION_MIN_SHARE = 0.005;
 const MAX_OPTIONS = 30;
+/** "Good vs" needs this many games on each side of the trait, this many buyers facing it, and a buy rate this many times higher. */
+const GOOD_VS_MIN_SIDE = 30;
+const GOOD_VS_MIN_BUYERS = 10;
+const GOOD_VS_MIN_RATIO = 1.25;
 
 /**
  * Every finished item the build's players buy often enough to judge, with its record. Its win rate is
  * set against games that finished an item at the same point (a 5th item against all 5-item games),
  * so late, long-game items aren't marked down for the length of the games they appear in.
  */
-export function itemOptions(games: BuildGame[], candidates: SwapCandidate[]): ItemOption[] {
+export function itemOptions(games: BuildGame[], items: ItemCatalog, candidates: SwapCandidate[] = []): ItemOption[] {
   const SIX = 6;
   // Win rate of games that finished at least k + 1 items.
   const atPosition = Array.from({ length: SIX }, (_, k) => {
@@ -375,10 +379,28 @@ export function itemOptions(games: BuildGame[], candidates: SwapCandidate[]): It
       b.positions.push(k + 1);
     });
   }
-  const goodVs = (itemId: number) => candidates
-    .filter((c) => c.itemId === itemId)
-    .sort((a, b) => b.rateOn - b.rateOff - (a.rateOn - a.rateOff))
-    .map((c) => c.trigger);
+  // What it's bought against: traits it answers by Riot's item text that its players face more
+  // often than the build's players overall (it's bought more when the trait is there).
+  const known = games.filter((g) => g.traits);
+  const goodVs = (itemId: number) => {
+    const swapLift = new Map(candidates.filter((c) => c.itemId === itemId).map((c) => [c.trigger, c.rateOn - c.rateOff]));
+    const lifts: [Trait, number][] = [];
+    for (const trait of new Set([...swapLift.keys(), ...items.counters(itemId)])) {
+      if (swapLift.has(trait)) {
+        lifts.push([trait, swapLift.get(trait)! + 1]);
+        continue;
+      }
+      const on = known.filter((g) => g.traits!.has(trait));
+      const off = known.filter((g) => !g.traits!.has(trait));
+      if (on.length < GOOD_VS_MIN_SIDE || off.length < GOOD_VS_MIN_SIDE) continue;
+      const has = (g: BuildGame) => g.legendaries.slice(0, SIX).some((l) => l.id === itemId);
+      const boughtOn = on.filter(has).length;
+      const rateOn = boughtOn / on.length;
+      const rateOff = off.filter(has).length / off.length;
+      if (boughtOn >= GOOD_VS_MIN_BUYERS && rateOn >= rateOff * GOOD_VS_MIN_RATIO) lifts.push([trait, rateOn - rateOff]);
+    }
+    return lifts.sort((a, b) => b[1] - a[1]).map(([t]) => t);
+  };
   return [...bought]
     .filter(([, b]) => b.games >= OPTION_MIN_GAMES && b.games / games.length >= OPTION_MIN_SHARE)
     .sort(([ia, a], [ib, b]) => b.games - a.games || ia - ib)
@@ -391,7 +413,7 @@ export function itemOptions(games: BuildGame[], candidates: SwapCandidate[]): It
       winRateDelta: round3((b.wins - b.expected) / b.games),
       position: mode(b.positions)!,
       avgMinute: Math.round((b.minutes.reduce((s, m) => s + m, 0) / b.minutes.length) * 10) / 10,
-      goodVs: [...new Set(goodVs(itemId))],
+      goodVs: goodVs(itemId),
     }));
 }
 
@@ -481,7 +503,7 @@ export function buildVariants(games: BuildGame[], ctx: VariantContext): BuildVar
       slots,
       swaps: findSwaps(members, slots, ctx.items, ctx.swapCandidates),
       paths: corePaths(members),
-      options: itemOptions(members, ctx.swapCandidates ?? swapCandidates(members, ctx.items)),
+      options: itemOptions(members, ctx.items, ctx.swapCandidates ?? swapCandidates(members, ctx.items)),
       traitStats: traitStatsOf(members),
       stats: {
         games: members.length,
