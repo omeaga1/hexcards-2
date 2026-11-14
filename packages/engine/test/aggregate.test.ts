@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { distinctCorePath, type GamePlayer } from '@hexcards/data';
 import {
-  ItemCatalog, buildVariants, chooseClusters, cosineDistance, labelFor, skillOrderOf, toBuildGame, validateSkillOrder,
+  ItemCatalog, buildVariants, chooseClusters, corePaths, itemOptions, cosineDistance, labelFor, skillOrderOf, toBuildGame, validateSkillOrder,
   type BuildGame, type DDragonItem, PROFILE_TAGS,
 } from '../src';
 import { styles } from './fixtures';
@@ -123,6 +123,41 @@ describe('buildVariants', () => {
     const broken = { p: 8000, s: 8400, ids: [8010, 9111, 9104, 8299, 8444, 8473, 5005, 5008, 5011] };
     const games: BuildGame[] = Array.from({ length: 50 }, () => toBuildGame(player([3078, 6610, 3053], 1, { runes: broken }), items));
     expect(buildVariants(games, { items, styles, championName: 'Jax' })).toEqual([]);
+  });
+});
+
+describe('corePaths', () => {
+  it('groups games by their first three items, in the order most players bought them', () => {
+    const games = [
+      ...Array.from({ length: 30 }, (_, i) => toBuildGame(player([3078, 6610, 3053], i < 20 ? 1 : 0), items)),
+      ...Array.from({ length: 6 }, () => toBuildGame(player([6610, 3078, 3053], 0), items)),
+      ...Array.from({ length: 12 }, () => toBuildGame(player([3078, 3071, 3053], 1), items)),
+      // Too few games to list.
+      ...Array.from({ length: 4 }, () => toBuildGame(player([3078, 3142, 3053], 1), items)),
+    ];
+    const paths = corePaths(games);
+    expect(paths.map((p) => p.items)).toEqual([[3078, 6610, 3053], [3078, 3071, 3053]]);
+    expect(paths[0]).toMatchObject({ games: 36, winRate: 0.556 });
+    expect(paths[0]!.share).toBeCloseTo(36 / 52, 2);
+    expect(paths[1]).toMatchObject({ games: 12, winRate: 1 });
+  });
+});
+
+describe('itemOptions', () => {
+  it('lists every item bought often enough, judged against games of the same length', () => {
+    const games = [
+      // Black Cleaver as a 4th item wins 15 of 20; 4-item games overall win 25 of 40.
+      ...Array.from({ length: 20 }, (_, i) => toBuildGame(player([3078, 6610, 3053, 3071], i < 15 ? 1 : 0), items)),
+      ...Array.from({ length: 20 }, (_, i) => toBuildGame(player([3078, 6610, 3053, 3142], i < 10 ? 1 : 0), items)),
+      ...Array.from({ length: 20 }, (_, i) => toBuildGame(player([3078, 6610, 3053], i < 10 ? 1 : 0), items)),
+    ];
+    const candidates = [{ itemId: 3071, trigger: 'enemy-tanks-2plus' as const, rateOn: 0.5, rateOff: 0.2, buyers: 20, winRateDelta: 0.05 }];
+    const options = itemOptions(games, candidates);
+    expect(options.map((o) => o.itemId)).toEqual([3053, 3078, 6610, 3071, 3142]);
+    const cleaver = options.find((o) => o.itemId === 3071)!;
+    expect(cleaver).toMatchObject({ games: 20, share: 0.333, winRate: 0.75, position: 4, goodVs: ['enemy-tanks-2plus'] });
+    expect(cleaver.winRateDelta).toBeCloseTo(0.75 - 25 / 40, 3);
+    expect(options.find((o) => o.itemId === 3142)!.winRateDelta).toBeCloseTo(0.5 - 25 / 40, 3);
   });
 });
 

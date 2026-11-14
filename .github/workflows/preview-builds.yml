@@ -1,0 +1,36 @@
+# Temporary: builds this branch's pipeline from the collected games, without publishing, so the new
+# build fields can be checked on real data before merging.
+name: Preview builds
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['packages/engine/**', 'packages/data/**', 'pipeline/**', '.github/workflows/preview-builds.yml']
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DATA_KEY: ${{ secrets.DATA_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build
+        run: |
+          patch=$(curl -fsS https://omeaga1.github.io/hexcards-2/builds/latest.json | jq -r '.patch')
+          bash pipeline/data-release.sh restore "$patch"
+          npx tsx pipeline/src/build.ts --patch "$patch" --out site/builds
+          rm -rf pipeline/data
+          ls -la site/builds/$patch/pro | head
+          du -sh site/builds/$patch/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: builds
+          path: site/builds
+          retention-days: 3
